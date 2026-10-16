@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { Navigate, Route, Routes } from "react-router-dom"
 
@@ -21,8 +21,15 @@ const App = () => {
     const status = useSelector((state) => state.auth.status)
     const isAuthed = useSelector((state) => Boolean(state.auth.accessToken))
 
-    // on first load, try to recover the session from the refresh cookie
+    const bootstrapped = useRef(false)
+
+    // On first load, try to recover the session from the refresh cookie.
+    // The ref stops React StrictMode's double-invoke from firing two refreshes:
+    // two refreshes mint two different access tokens, and the second one churns
+    // the socket connection mid-handshake.
     useEffect(() => {
+        if (bootstrapped.current) return
+        bootstrapped.current = true
         dispatch(bootstrapAuth())
     }, [dispatch])
 
