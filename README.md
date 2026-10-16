@@ -17,6 +17,7 @@ WebSockets without a refresh.
 - [Demo accounts](#demo-accounts)
 - [Roles and permissions](#roles-and-permissions)
 - [Architecture](#architecture)
+- [Frontend design system](#frontend-design-system)
 - [Real-time design (WebSockets)](#real-time-design-websockets)
 - [Background job (overdue tasks)](#background-job-overdue-tasks)
 - [Notifications](#notifications)
@@ -131,12 +132,14 @@ server/
 client/src/
   app/                store + RTK Query base (auth header, 401 -> refresh -> retry)
   features/           auth, users, clients, projects, tasks, notifications,
-                      activity, presence, dashboard — each owns its slice + api
+                      activity, presence, dashboard, theme, ui — each owns its
+                      slice + api
   sockets/            socket singleton + SocketBridge + useProjectRoom
-  components/         layout, ui primitives, task table/modals, filters
+  components/         layout, footer, brand, toasts, search, cookie banner,
+                      scroll progress, ui primitives, task table/modals, filters
   pages/              login, dashboards, projects, project detail, tasks,
-                      users, clients, activity
-  lib/                formatting helpers and constants
+                      users, clients, activity, legal (privacy/terms/cookies)
+  lib/                formatting helpers, constants, document meta hook
 ```
 
 **State management split** — the reason for two stores:
@@ -145,8 +148,57 @@ client/src/
   invalidation. `task`/`project`/`activity`/`notification` tag invalidation is
   what keeps lists fresh when a socket event arrives.
 - **Redux slices** own *client and real-time state*: the in-memory access
-  token, the live activity buffer, the unread count, and the online presence
-  count. These are updated by socket events, not by fetching.
+  token, the live activity buffer, the unread count, the online presence
+  count, the theme mode and transient UI (toasts, cookie consent). These are
+  updated by socket events, not by fetching.
+
+---
+
+## Frontend design system
+
+The interface is deliberately restrained: a single **monochrome graphite**
+ramp, and colour reserved for meaning (status, priority, errors, destructive
+actions). There is no purple and no decorative blue.
+
+- **Tokens** — `client/src/index.css` defines semantic custom properties
+  (`--c-page`, `--c-surface`, `--c-line`, `--c-ink`, `--c-muted`, …) for light
+  and dark, exposed to Tailwind through `@theme inline`. Components only ever
+  reference `bg-surface`, `text-muted`, `border-line` and friends, so retheming
+  happens in one file.
+- **Dark mode** — class-based (`@custom-variant dark`). Default is light; the
+  choice is stored in `localStorage` and applied by an inline script in
+  `index.html` before first paint, so there is no flash.
+- **Type** — Space Grotesk (display), IBM Plex Sans (body), IBM Plex Mono for
+  data: task numbers, counts, timestamps and the small uppercase eyebrows.
+- **Priority is encoded by weight**, not by four competing hues: outline →
+  tinted → amber → red. Status uses two neutral weights, amber for "needs
+  attention" and green for "finished".
+- **Signature** — a 2px graphite rail across the top of the viewport that
+  tracks scroll position, and turns into an indeterminate sweep while a write
+  is in flight.
+
+Frontend features that back the polish pass:
+
+- **Accessibility** — skip links on every shell, a visible `:focus-visible`
+  ring on all controls, focus-trapped modals and drawers that restore focus and
+  close on `Escape`, labelled icon-only buttons, `aria-live` toasts, and
+  `role="alert"` validation messages.
+- **Responsive tables** — task, client and user tables render as cards below
+  `md`, so no page scrolls sideways on a phone.
+- **Loading and empty states** — skeleton loaders for lists and cards, a
+  branded splash during auth bootstrap, and purposeful empty states with an
+  action.
+- **Command palette** — ⌘K / Ctrl-K opens a role-scoped search over projects,
+  tasks, clients and people. It only reads endpoints the signed-in user may
+  already call, so results cannot leak across roles.
+- **Legal and consent** — Privacy, Terms and Cookies pages plus a simple
+  cookie banner. The legal text is a genuine template, not legal advice; review
+  it with counsel before production.
+- **Reduced motion** — `prefers-reduced-motion` disables smooth scrolling,
+  pulses and transitions.
+- **Images** — there are no raster images in the app. The favicon and
+  apple-touch icon are hand-written SVGs, so image compression is not
+  applicable.
 
 ---
 

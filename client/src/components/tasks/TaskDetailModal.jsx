@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
+import { useDispatch } from "react-redux"
 
 import {
     useDeleteTaskMutation,
@@ -8,28 +9,150 @@ import {
     useUpdateTaskStatusMutation,
 } from "../../features/tasks/tasksApi.js"
 import { useGetDevelopersQuery } from "../../features/users/usersApi.js"
+import { pushToast } from "../../features/ui/uiSlice.js"
 import { errorMessage } from "../../app/api/apiSlice.js"
 import {
     PRIORITY_LABELS,
+    STATUS_LABELS,
     TASK_PRIORITIES,
     TASK_STATUSES,
-    STATUS_LABELS,
 } from "../../lib/constants.js"
-import { activityText, fullName, relativeTime, toDateInput } from "../../lib/format.js"
+import {
+    activityText,
+    fullName,
+    relativeTime,
+    toDateInput,
+} from "../../lib/format.js"
 import { PriorityBadge } from "../badges.jsx"
 import {
     Avatar,
     Button,
+    ConfirmDialog,
     ErrorNote,
     Field,
     Input,
     Modal,
     Select,
-    Spinner,
+    Skeleton,
     Textarea,
 } from "../ui.jsx"
 
+// The edit form is mounted only when the user opts in, so it can seed itself
+// from the loaded task in a useState initializer — no syncing effect needed.
+const TaskEditForm = ({ task, developers, onSaved, onCancel }) => {
+    const dispatch = useDispatch()
+    const [updateTask, { isLoading, error }] = useUpdateTaskMutation()
+
+    const [form, setForm] = useState(() => ({
+        title: task.title,
+        description: task.description || "",
+        assignedTo: task.assignedTo?._id || "",
+        priority: task.priority,
+        dueDate: toDateInput(task.dueDate),
+    }))
+    const [fieldErrors, setFieldErrors] = useState({})
+
+    const onChange = (event) => {
+        const { name, value } = event.target
+        setForm((current) => ({ ...current, [name]: value }))
+        setFieldErrors((current) => ({ ...current, [name]: undefined }))
+    }
+
+    const save = async () => {
+        const errors = {}
+        if (!form.title.trim()) errors.title = "Give the task a title."
+        if (!form.dueDate) errors.dueDate = "Set a due date."
+
+        setFieldErrors(errors)
+        if (Object.keys(errors).length > 0) return
+
+        try {
+            await updateTask({ id: task._id, ...form }).unwrap()
+            dispatch(pushToast({ message: "Task updated." }))
+            onSaved()
+        } catch (failure) {
+            dispatch(
+                pushToast({ tone: "error", message: errorMessage(failure) }),
+            )
+        }
+    }
+
+    return (
+        <div className="space-y-4">
+            <Field label="Title" required error={fieldErrors.title}>
+                <Input
+                    name="title"
+                    value={form.title}
+                    onChange={onChange}
+                    invalid={Boolean(fieldErrors.title)}
+                />
+            </Field>
+
+            <Field label="Description">
+                <Textarea
+                    name="description"
+                    value={form.description}
+                    onChange={onChange}
+                />
+            </Field>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Field label="Assignee">
+                    <Select
+                        name="assignedTo"
+                        value={form.assignedTo}
+                        onChange={onChange}
+                    >
+                        {developers.map((dev) => (
+                            <option key={dev._id} value={dev._id}>
+                                {fullName(dev)}
+                            </option>
+                        ))}
+                    </Select>
+                </Field>
+
+                <Field label="Priority">
+                    <Select
+                        name="priority"
+                        value={form.priority}
+                        onChange={onChange}
+                    >
+                        {TASK_PRIORITIES.map((priority) => (
+                            <option key={priority} value={priority}>
+                                {PRIORITY_LABELS[priority]}
+                            </option>
+                        ))}
+                    </Select>
+                </Field>
+            </div>
+
+            <Field label="Due date" required error={fieldErrors.dueDate}>
+                <Input
+                    name="dueDate"
+                    type="date"
+                    value={form.dueDate}
+                    onChange={onChange}
+                    invalid={Boolean(fieldErrors.dueDate)}
+                />
+            </Field>
+
+            <ErrorNote>{error ? errorMessage(error) : null}</ErrorNote>
+
+            <div className="flex flex-wrap justify-end gap-2">
+                <Button variant="secondary" onClick={onCancel}>
+                    Cancel
+                </Button>
+                <Button onClick={save} loading={isLoading}>
+                    {isLoading ? "Saving…" : "Save changes"}
+                </Button>
+            </div>
+        </div>
+    )
+}
+
 const TaskDetailModal = ({ taskId, open, onClose, canEdit = false }) => {
+    const dispatch = useDispatch()
+
     const { data, isLoading } = useGetTaskQuery(taskId, { skip: !taskId })
     const { data: activityData } = useGetTaskActivityQuery(
         { id: taskId },
@@ -40,237 +163,205 @@ const TaskDetailModal = ({ taskId, open, onClose, canEdit = false }) => {
     })
 
     const [updateStatus] = useUpdateTaskStatusMutation()
-    const [updateTask, { isLoading: saving, error }] = useUpdateTaskMutation()
-    const [deleteTask] = useDeleteTaskMutation()
+    const [deleteTask, { isLoading: deleting }] = useDeleteTaskMutation()
 
     const [editing, setEditing] = useState(false)
-    const [form, setForm] = useState(null)
+    const [confirmOpen, setConfirmOpen] = useState(false)
 
     const task = data?.data
     const developers = devData?.data || []
     const logs = activityData?.data || []
 
-    // seed the edit form whenever a different task is opened
-    useEffect(() => {
-        if (task) {
-            setForm({
-                title: task.title,
-                description: task.description || "",
-                assignedTo: task.assignedTo?._id || "",
-                priority: task.priority,
-                dueDate: toDateInput(task.dueDate),
-            })
-        }
+    const close = () => {
         setEditing(false)
-    }, [task])
+        setConfirmOpen(false)
+        onClose()
+    }
 
-    const onChange = (event) =>
-        setForm((value) => ({
-            ...value,
-            [event.target.name]: event.target.value,
-        }))
-
-    const save = async () => {
+    const onStatus = async (status) => {
         try {
-            await updateTask({ id: taskId, ...form }).unwrap()
-            setEditing(false)
-        } catch {
-            // surfaced below
+            await updateStatus({ id: taskId, status }).unwrap()
+            dispatch(
+                pushToast({ message: `Task moved to ${STATUS_LABELS[status]}.` }),
+            )
+        } catch (failure) {
+            dispatch(
+                pushToast({ tone: "error", message: errorMessage(failure) }),
+            )
         }
     }
 
     const onDelete = async () => {
-        await deleteTask(taskId)
-        onClose()
+        try {
+            await deleteTask(taskId).unwrap()
+            dispatch(pushToast({ message: "Task deleted." }))
+            close()
+        } catch (failure) {
+            dispatch(
+                pushToast({ tone: "error", message: errorMessage(failure) }),
+            )
+        }
     }
 
+    const footer =
+        canEdit && task && !editing ? (
+            <>
+                <Button
+                    variant="dangerGhost"
+                    onClick={() => setConfirmOpen(true)}
+                    className="mr-auto"
+                >
+                    Delete task
+                </Button>
+                <Button variant="secondary" onClick={() => setEditing(true)}>
+                    Edit
+                </Button>
+            </>
+        ) : null
+
     return (
-        <Modal
-            open={open}
-            onClose={onClose}
-            title={
-                task
-                    ? `Task #${task.taskNumber} · ${task.project?.projectTitle || ""}`
-                    : "Task"
-            }
-            footer={
-                canEdit && task ? (
-                    editing ? (
-                        <>
-                            <Button
-                                variant="secondary"
-                                onClick={() => setEditing(false)}
-                            >
-                                Cancel
-                            </Button>
-                            <Button onClick={save} disabled={saving}>
-                                {saving ? "Saving…" : "Save changes"}
-                            </Button>
-                        </>
-                    ) : (
-                        <>
-                            <Button
-                                variant="danger"
-                                onClick={onDelete}
-                                className="mr-auto"
-                            >
-                                Delete
-                            </Button>
-                            <Button
-                                variant="secondary"
-                                onClick={() => setEditing(true)}
-                            >
-                                Edit
-                            </Button>
-                        </>
-                    )
-                ) : null
-            }
-        >
-            {isLoading || !task ? (
-                <div className="flex items-center gap-2 py-6 text-sm text-slate-500">
-                    <Spinner /> Loading task…
-                </div>
-            ) : editing ? (
-                <div className="space-y-4">
-                    <Field label="Title">
-                        <Input
-                            name="title"
-                            value={form.title}
-                            onChange={onChange}
-                        />
-                    </Field>
-                    <Field label="Description">
-                        <Textarea
-                            name="description"
-                            value={form.description}
-                            onChange={onChange}
-                        />
-                    </Field>
-                    <div className="grid grid-cols-2 gap-3">
-                        <Field label="Assignee">
-                            <Select
-                                name="assignedTo"
-                                value={form.assignedTo}
-                                onChange={onChange}
-                            >
-                                {developers.map((dev) => (
-                                    <option key={dev._id} value={dev._id}>
-                                        {fullName(dev)}
-                                    </option>
-                                ))}
-                            </Select>
-                        </Field>
-                        <Field label="Priority">
-                            <Select
-                                name="priority"
-                                value={form.priority}
-                                onChange={onChange}
-                            >
-                                {TASK_PRIORITIES.map((priority) => (
-                                    <option key={priority} value={priority}>
-                                        {PRIORITY_LABELS[priority]}
-                                    </option>
-                                ))}
-                            </Select>
-                        </Field>
+        <>
+            <Modal
+                open={open}
+                onClose={close}
+                title={
+                    task
+                        ? `Task #${task.taskNumber}`
+                        : "Task"
+                }
+                description={task?.project?.projectTitle || undefined}
+                footer={footer}
+                dismissOnEscape={!confirmOpen}
+            >
+                {isLoading || !task ? (
+                    <div className="space-y-3">
+                        <Skeleton className="h-4 w-1/3" />
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-4/5" />
                     </div>
-                    <Field label="Due date">
-                        <Input
-                            name="dueDate"
-                            type="date"
-                            value={form.dueDate}
-                            onChange={onChange}
-                        />
-                    </Field>
-                    <ErrorNote>{error ? errorMessage(error) : null}</ErrorNote>
-                </div>
-            ) : (
-                <div className="space-y-5">
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <PriorityBadge priority={task.priority} />
-                            {task.isOverdue ? (
-                                <span className="text-xs font-medium text-rose-600">
-                                    Overdue
-                                </span>
+                ) : editing ? (
+                    <TaskEditForm
+                        task={task}
+                        developers={developers}
+                        onSaved={() => setEditing(false)}
+                        onCancel={() => setEditing(false)}
+                    />
+                ) : (
+                    <div className="space-y-5">
+                        <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <PriorityBadge priority={task.priority} />
+                                {task.isOverdue ? (
+                                    <span className="text-xs font-medium text-danger">
+                                        Overdue
+                                    </span>
+                                ) : null}
+                            </div>
+                            <h3 className="mt-2 font-display text-base font-semibold tracking-tight text-ink">
+                                {task.title}
+                            </h3>
+                            {task.description ? (
+                                <p className="mt-1 text-sm leading-relaxed text-muted">
+                                    {task.description}
+                                </p>
                             ) : null}
                         </div>
-                        <h3 className="mt-2 text-sm font-semibold text-slate-900">
-                            {task.title}
-                        </h3>
-                        {task.description ? (
-                            <p className="mt-1 text-sm text-slate-600">
-                                {task.description}
-                            </p>
-                        ) : null}
-                    </div>
 
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                            <p className="text-xs text-slate-400">Assignee</p>
-                            <p className="mt-1 flex items-center gap-2 text-slate-700">
-                                <Avatar person={task.assignedTo} />
-                                {fullName(task.assignedTo)}
-                            </p>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-faint">
+                                    Assignee
+                                </p>
+                                <p className="mt-1.5 flex items-center gap-2 text-muted">
+                                    <Avatar person={task.assignedTo} />
+                                    {fullName(task.assignedTo)}
+                                </p>
+                            </div>
+                            <div>
+                                <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-faint">
+                                    Due date
+                                </p>
+                                <p
+                                    className={`mt-1.5 ${
+                                        task.isOverdue
+                                            ? "font-medium text-danger"
+                                            : "text-muted"
+                                    }`}
+                                >
+                                    {toDateInput(task.dueDate) || "—"}
+                                </p>
+                            </div>
                         </div>
-                        <div>
-                            <p className="text-xs text-slate-400">Due date</p>
-                            <p className="mt-1 text-slate-700">
-                                {toDateInput(task.dueDate) || "—"}
-                            </p>
-                        </div>
-                    </div>
 
-                    <Field label="Status">
-                        <Select
-                            value={task.status}
-                            onChange={(event) =>
-                                updateStatus({
-                                    id: taskId,
-                                    status: event.target.value,
-                                })
-                            }
-                        >
-                            {TASK_STATUSES.map((status) => (
-                                <option key={status} value={status}>
-                                    {STATUS_LABELS[status]}
-                                </option>
-                            ))}
-                        </Select>
-                    </Field>
-
-                    <div>
-                        <p className="mb-2 text-xs font-medium text-slate-600">
-                            Activity log
-                        </p>
-                        {logs.length === 0 ? (
-                            <p className="text-xs text-slate-400">
-                                No activity recorded yet.
-                            </p>
-                        ) : (
-                            <ul className="space-y-2">
-                                {logs.map((log) => (
-                                    <li
-                                        key={log._id}
-                                        className="flex items-start gap-2 text-xs"
-                                    >
-                                        <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-300" />
-                                        <span className="text-slate-600">
-                                            {activityText(log)}
-                                            <span className="text-slate-400">
-                                                {" · "}
-                                                {relativeTime(log.createdAt)}
-                                            </span>
-                                        </span>
-                                    </li>
+                        <Field label="Status">
+                            <Select
+                                value={task.status}
+                                aria-label="Task status"
+                                onChange={(event) =>
+                                    onStatus(event.target.value)
+                                }
+                            >
+                                {TASK_STATUSES.map((status) => (
+                                    <option key={status} value={status}>
+                                        {STATUS_LABELS[status]}
+                                    </option>
                                 ))}
-                            </ul>
-                        )}
+                            </Select>
+                        </Field>
+
+                        <div>
+                            <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.14em] text-faint">
+                                Activity log
+                            </p>
+                            {logs.length === 0 ? (
+                                <p className="text-xs text-muted">
+                                    No activity recorded yet.
+                                </p>
+                            ) : (
+                                <ul className="space-y-2.5">
+                                    {logs.map((log) => (
+                                        <li
+                                            key={log._id}
+                                            className="flex items-start gap-2 text-xs"
+                                        >
+                                            <span
+                                                aria-hidden="true"
+                                                className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-line-strong"
+                                            />
+                                            <span className="text-muted">
+                                                {activityText(log)}
+                                                <span className="text-faint">
+                                                    {" · "}
+                                                    <span className="font-mono text-[11px]">
+                                                        {relativeTime(
+                                                            log.createdAt,
+                                                        )}
+                                                    </span>
+                                                </span>
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
                     </div>
-                </div>
-            )}
-        </Modal>
+                )}
+            </Modal>
+
+            <ConfirmDialog
+                open={confirmOpen}
+                onClose={() => setConfirmOpen(false)}
+                onConfirm={onDelete}
+                loading={deleting}
+                title="Delete this task?"
+                description={
+                    task
+                        ? `Task #${task.taskNumber} · ${task.title}`
+                        : undefined
+                }
+                confirmLabel="Delete task"
+            />
+        </>
     )
 }
 

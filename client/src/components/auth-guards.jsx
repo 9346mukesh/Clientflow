@@ -1,13 +1,19 @@
 import { Navigate, useLocation } from "react-router-dom"
 import { useSelector } from "react-redux"
 
+import { LogoMark } from "./icons.jsx"
 import { Spinner } from "./ui.jsx"
 
+// A calm, branded first-paint state — never a blank white screen. It stands in
+// for the page, so it carries the main landmark the shell would otherwise have.
 export const Splash = () => (
-    <div className="flex min-h-screen items-center justify-center gap-3 bg-ink-950 text-slate-300">
-        <Spinner />
-        <span className="text-sm">Loading ClientFlow…</span>
-    </div>
+    <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-page">
+        <LogoMark className="h-10 w-10 text-ink" />
+        <div className="flex items-center gap-2 text-muted">
+            <Spinner />
+            <span className="text-sm">Loading ClientFlow…</span>
+        </div>
+    </main>
 )
 
 // Gate a route on being signed in, and optionally on holding one of `roles`.

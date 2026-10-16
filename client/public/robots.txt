@@ -1,0 +1,4 @@
+# ClientFlow is an internal agency tool. Everything behind the sign-in is
+# private, so crawlers are asked to stay away from the whole origin.
+User-agent: *
+Disallow: /

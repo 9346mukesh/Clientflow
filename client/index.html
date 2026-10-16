@@ -2,9 +2,51 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
     <title>ClientFlow</title>
+    <meta
+      name="description"
+      content="ClientFlow is a real-time client project dashboard for agencies — manage clients, projects and tasks with role-based access and a live activity feed."
+    />
+    <meta name="application-name" content="ClientFlow" />
+    <meta name="color-scheme" content="light dark" />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.svg" />
+    <link rel="mask-icon" href="/favicon.svg" color="#171717" />
+    <meta name="theme-color" content="#FAFAFA" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0A0A0A" media="(prefers-color-scheme: dark)" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="ClientFlow" />
+    <meta property="og:title" content="ClientFlow" />
+    <meta
+      property="og:description"
+      content="A real-time client project dashboard for agencies, with role-based access and a live activity feed."
+    />
+    <meta name="twitter:card" content="summary" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <script>
+      // Applied before first paint so the saved theme never flashes.
+      // Default is light; the toggle stores an explicit choice.
+      (function () {
+        try {
+          if (localStorage.getItem("clientflow-theme") === "dark") {
+            document.documentElement.classList.add("dark")
+          }
+        } catch (error) {
+          /* private mode: fall back to light */
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

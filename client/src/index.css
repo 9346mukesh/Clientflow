@@ -1,32 +1,159 @@
 @import "tailwindcss";
 
+/* Class-based dark mode: the toggle puts `dark` on <html>. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
-    --color-ink-950: #0b1120;
-    --color-ink-900: #111827;
-    --color-ink-800: #1f2937;
-    --color-brand-50: #eef2ff;
-    --color-brand-100: #e0e7ff;
-    --color-brand-500: #6366f1;
-    --color-brand-600: #4f46e5;
-    --color-brand-700: #4338ca;
+    --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+    --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-html,
-body,
-#root {
-    height: 100%;
+/*
+ * Semantic tokens. One neutral (graphite) ramp, no blue/purple tint.
+ * Components reference these through Tailwind utilities such as
+ * bg-surface, text-muted, border-line.
+ */
+:root {
+    --c-page: #fafafa;
+    --c-surface: #ffffff;
+    --c-surface-2: #f5f5f5;
+    --c-line: #e5e5e5;
+    --c-line-strong: #d4d4d4;
+    --c-ink: #171717;
+    --c-muted: #525252;
+    /* Darker than a stock 500 so 10px labels clear 4.5:1 on surface-2. */
+    --c-faint: #6b6b6b;
+    --c-action: #171717;
+    --c-action-hover: #000000;
+    --c-on-action: #fafafa;
+    --c-danger: #b91c1c;
+    --c-warning: #b45309;
+    --c-success: #15803d;
+    --c-focus: #171717;
 }
 
-body {
-    margin: 0;
-    background-color: #f1f5f9;
-    color: #0f172a;
-    font-family:
-        ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
-        Arial, sans-serif;
+.dark {
+    --c-page: #0a0a0a;
+    --c-surface: #141414;
+    --c-surface-2: #1c1c1c;
+    --c-line: #262626;
+    --c-line-strong: #333333;
+    --c-ink: #f5f5f5;
+    --c-muted: #a3a3a3;
+    /* Lighter than the light-theme value: on near-black, 4.5:1 needs it. */
+    --c-faint: #8f8f8f;
+    --c-action: #fafafa;
+    --c-action-hover: #ffffff;
+    --c-on-action: #0a0a0a;
+    --c-danger: #f87171;
+    --c-warning: #fbbf24;
+    --c-success: #4ade80;
+    --c-focus: #f5f5f5;
 }
 
-/* a subtle pulse for the live-presence dot */
+@theme inline {
+    --color-page: var(--c-page);
+    --color-surface: var(--c-surface);
+    --color-surface-2: var(--c-surface-2);
+    --color-line: var(--c-line);
+    --color-line-strong: var(--c-line-strong);
+    --color-ink: var(--c-ink);
+    --color-muted: var(--c-muted);
+    --color-faint: var(--c-faint);
+    --color-action: var(--c-action);
+    --color-action-hover: var(--c-action-hover);
+    --color-on-action: var(--c-on-action);
+    --color-danger: var(--c-danger);
+    --color-warning: var(--c-warning);
+    --color-success: var(--c-success);
+}
+
+@layer base {
+    html {
+        scroll-behavior: smooth;
+        -webkit-text-size-adjust: 100%;
+    }
+
+    html:not(.dark) {
+        color-scheme: light;
+    }
+
+    html.dark {
+        color-scheme: dark;
+    }
+
+    html,
+    body,
+    #root {
+        min-height: 100%;
+    }
+
+    body {
+        margin: 0;
+        background-color: var(--c-page);
+        color: var(--c-ink);
+        font-family: var(--font-sans);
+        -webkit-font-smoothing: antialiased;
+        /* nothing should ever scroll sideways */
+        overflow-x: hidden;
+    }
+
+    /* a visible ring for keyboard users on every focusable control */
+    :focus-visible {
+        outline: 2px solid var(--c-focus);
+        outline-offset: 2px;
+        border-radius: 3px;
+    }
+
+    /* but never leave a ring behind from a mouse click */
+    :focus:not(:focus-visible) {
+        outline: none;
+    }
+
+    ::selection {
+        background: var(--c-ink);
+        color: var(--c-page);
+    }
+
+    /* slim, quiet scrollbars */
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--c-line-strong) transparent;
+    }
+
+    ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: var(--c-line-strong);
+        background-clip: content-box;
+        border: 3px solid transparent;
+        border-radius: 999px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        html {
+            scroll-behavior: auto;
+        }
+
+        *,
+        *::before,
+        *::after {
+            animation-duration: 0.001ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.001ms !important;
+        }
+    }
+}
+
+/* live presence dot on the admin header */
 @keyframes livePulse {
     0%,
     100% {
@@ -41,4 +168,39 @@ body {
 
 .live-dot {
     animation: livePulse 1.6s ease-in-out infinite;
+}
+
+/* skeleton shimmer for loading lists and cards */
+@keyframes skeletonSweep {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+.skeleton {
+    background: linear-gradient(
+        90deg,
+        var(--c-surface-2) 25%,
+        var(--c-line) 37%,
+        var(--c-surface-2) 63%
+    );
+    background-size: 400% 100%;
+    animation: skeletonSweep 1.4s ease-in-out infinite;
+}
+
+/* indeterminate progress hairline while something is loading */
+@keyframes indeterminateSweep {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(400%);
+    }
+}
+
+.indeterminate-bar {
+    animation: indeterminateSweep 1.1s ease-in-out infinite;
 }

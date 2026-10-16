@@ -1,6 +1,6 @@
 import { useState } from "react"
+import { useDispatch, useSelector } from "react-redux"
 import { Link, useParams } from "react-router-dom"
-import { useSelector } from "react-redux"
 
 import { useGetProjectQuery } from "../features/projects/projectsApi.js"
 import {
@@ -15,11 +15,24 @@ import CreateTaskModal from "../components/tasks/CreateTaskModal.jsx"
 import TaskFilters from "../components/TaskFilters.jsx"
 import ActivityFeed from "../components/ActivityFeed.jsx"
 import { ProjectStatusBadge } from "../components/badges.jsx"
-import { Button, Card, StatCard } from "../components/ui.jsx"
-import { fullName } from "../lib/format.js"
+import {
+    Button,
+    Card,
+    CardHeader,
+    EmptyState,
+    PageHeader,
+    Skeleton,
+    StatCard,
+    TableSkeleton,
+} from "../components/ui.jsx"
+import { pushToast } from "../features/ui/uiSlice.js"
+import { errorMessage } from "../app/api/apiSlice.js"
 import { STATUS_LABELS, TASK_STATUSES } from "../lib/constants.js"
+import { fullName } from "../lib/format.js"
+import { useDocumentMeta } from "../lib/useDocumentMeta.js"
 
 const ProjectDetailPage = () => {
+    const dispatch = useDispatch()
     const { id } = useParams()
     const role = useSelector((state) => state.auth.user?.role)
     const canManage = role === "ADMIN" || role === "PROJECT_MANAGER"
@@ -44,21 +57,54 @@ const ProjectDetailPage = () => {
     const project = data?.data
     const tasks = taskData?.data || []
 
+    useDocumentMeta(
+        project ? project.projectTitle : "Project",
+        project?.projectDescription,
+    )
+
     if (error) {
         return (
-            <Card className="px-5 py-6 text-sm text-slate-500">
-                {error?.status === 404
-                    ? "Project not found, or you do not have access to it."
-                    : "Could not load this project."}
+            <Card className="mx-auto max-w-lg">
+                <EmptyState
+                    title={
+                        error?.status === 404
+                            ? "Project not found"
+                            : "Could not load this project"
+                    }
+                    hint={
+                        error?.status === 404
+                            ? "It may have been removed, or you may not have access to it."
+                            : "Check your connection and try again."
+                    }
+                    action={
+                        <Link to="/projects">
+                            <Button variant="secondary" size="sm">
+                                Back to projects
+                            </Button>
+                        </Link>
+                    }
+                />
             </Card>
         )
     }
 
     if (isLoading || !project) {
         return (
-            <Card className="px-5 py-6 text-sm text-slate-500">
-                Loading project…
-            </Card>
+            <div className="space-y-6">
+                <div className="space-y-3">
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-7 w-72" />
+                    <Skeleton className="h-4 w-full max-w-xl" />
+                </div>
+                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                    {TASK_STATUSES.map((status) => (
+                        <Skeleton key={status} className="h-20 w-full" />
+                    ))}
+                </div>
+                <Card>
+                    <TableSkeleton rows={5} cols={5} />
+                </Card>
+            </div>
         )
     }
 
@@ -67,38 +113,53 @@ const ProjectDetailPage = () => {
         count: tasks.filter((task) => task.status === status).length,
     }))
 
+    const onStatus = async (taskId, status) => {
+        try {
+            await updateStatus({ id: taskId, status }).unwrap()
+            dispatch(
+                pushToast({ message: `Task moved to ${STATUS_LABELS[status]}.` }),
+            )
+        } catch (failure) {
+            dispatch(
+                pushToast({ tone: "error", message: errorMessage(failure) }),
+            )
+        }
+    }
+
     return (
-        <div className="space-y-5">
+        <div className="space-y-6">
             <div>
                 <Link
                     to="/projects"
-                    className="text-xs text-slate-500 hover:text-brand-600"
+                    className="inline-flex items-center gap-1 text-xs text-muted underline-offset-4 transition-colors hover:text-ink hover:underline"
                 >
-                    ← Projects
+                    ← All projects
                 </Link>
 
-                <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <h1 className="text-lg font-semibold text-slate-900">
-                                {project.projectTitle}
-                            </h1>
-                            <ProjectStatusBadge status={project.status} />
-                        </div>
-                        <p className="mt-1 max-w-2xl text-sm text-slate-500">
-                            {project.projectDescription}
-                        </p>
-                        <p className="mt-1 text-xs text-slate-400">
-                            {project.client?.companyName} · Manager{" "}
-                            {fullName(project.projectManager)}
-                        </p>
-                    </div>
+                <div className="mt-3">
+                    <PageHeader
+                        eyebrow={`Client · ${project.client?.companyName || "—"}`}
+                        title={project.projectTitle}
+                        description={project.projectDescription}
+                        actions={
+                            canManage ? (
+                                <Button onClick={() => setCreateOpen(true)}>
+                                    New task
+                                </Button>
+                            ) : null
+                        }
+                    />
+                </div>
 
-                    {canManage ? (
-                        <Button onClick={() => setCreateOpen(true)}>
-                            New task
-                        </Button>
-                    ) : null}
+                <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted">
+                    <ProjectStatusBadge status={project.status} />
+                    <span className="text-faint">|</span>
+                    <span>
+                        Manager ·{" "}
+                        <span className="text-ink">
+                            {fullName(project.projectManager)}
+                        </span>
+                    </span>
                 </div>
             </div>
 
@@ -113,21 +174,21 @@ const ProjectDetailPage = () => {
             </div>
 
             <Card>
-                <div className="border-b border-slate-100 px-5 py-4">
+                <CardHeader
+                    title="Tasks"
+                    subtitle="Filtered view; your filters stay in the URL"
+                />
+                <div className="border-b border-line px-4 py-4 sm:px-5">
                     <TaskFilters />
                 </div>
                 {loadingTasks ? (
-                    <p className="px-5 py-6 text-sm text-slate-500">
-                        Loading tasks…
-                    </p>
+                    <TableSkeleton rows={5} cols={5} />
                 ) : (
                     <TaskTable
                         tasks={tasks}
-                        canChangeStatus
+                        canChangeStatus={canManage}
                         onOpen={setOpenTaskId}
-                        onStatus={(taskId, status) =>
-                            updateStatus({ id: taskId, status })
-                        }
+                        onStatus={onStatus}
                     />
                 )}
             </Card>
@@ -146,11 +207,14 @@ const ProjectDetailPage = () => {
                 canEdit={canManage}
             />
 
-            <CreateTaskModal
-                open={createOpen}
-                onClose={() => setCreateOpen(false)}
-                projectId={id}
-            />
+            {/* Mounted only while open so the draft always starts clean. */}
+            {createOpen ? (
+                <CreateTaskModal
+                    open
+                    projectId={id}
+                    onClose={() => setCreateOpen(false)}
+                />
+            ) : null}
         </div>
     )
 }

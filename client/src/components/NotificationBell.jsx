@@ -7,13 +7,21 @@ import {
     useMarkReadMutation,
 } from "../features/notifications/notificationsApi.js"
 import { setUnreadCount } from "../features/notifications/notificationsSlice.js"
+import { pushToast } from "../features/ui/uiSlice.js"
 import { relativeTime } from "../lib/format.js"
-import { EmptyState, Spinner } from "./ui.jsx"
+import { EmptyState, Skeleton } from "./ui.jsx"
+import {
+    IconBell,
+    IconClock,
+    IconInbox,
+    IconPin,
+    IconSearch,
+} from "./icons.jsx"
 
 const TYPE_ICON = {
-    TASK_ASSIGNED: "📌",
-    TASK_IN_REVIEW: "🔎",
-    TASK_OVERDUE: "⏰",
+    TASK_ASSIGNED: IconPin,
+    TASK_IN_REVIEW: IconSearch,
+    TASK_OVERDUE: IconClock,
 }
 
 const NotificationBell = () => {
@@ -35,15 +43,25 @@ const NotificationBell = () => {
         }
     }, [data, dispatch])
 
-    // close on an outside click
+    // close on an outside click or Escape
     useEffect(() => {
-        const onClick = (event) => {
+        const onPointerDown = (event) => {
             if (rootRef.current && !rootRef.current.contains(event.target)) {
                 setOpen(false)
             }
         }
-        document.addEventListener("mousedown", onClick)
-        return () => document.removeEventListener("mousedown", onClick)
+
+        const onKeyDown = (event) => {
+            if (event.key === "Escape") setOpen(false)
+        }
+
+        document.addEventListener("mousedown", onPointerDown)
+        document.addEventListener("keydown", onKeyDown)
+
+        return () => {
+            document.removeEventListener("mousedown", onPointerDown)
+            document.removeEventListener("keydown", onKeyDown)
+        }
     }, [])
 
     const items = useMemo(() => {
@@ -62,10 +80,18 @@ const NotificationBell = () => {
     }, [data, live])
 
     const onOpenItem = async (item) => {
-        if (!item.isRead) {
-            await markRead(item._id)
-            dispatch(setUnreadCount(Math.max(storeCount - 1, 0)))
-        }
+        if (item.isRead) return
+
+        await markRead(item._id)
+        dispatch(setUnreadCount(Math.max(storeCount - 1, 0)))
+    }
+
+    const onMarkAll = async () => {
+        if (storeCount === 0) return
+
+        await markAllRead()
+        dispatch(setUnreadCount(0))
+        dispatch(pushToast({ message: "All notifications marked as read." }))
     }
 
     return (
@@ -73,78 +99,94 @@ const NotificationBell = () => {
             <button
                 type="button"
                 onClick={() => setOpen((value) => !value)}
-                className="relative rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-                aria-label="Notifications"
+                aria-haspopup="true"
+                aria-expanded={open}
+                aria-label={
+                    storeCount > 0
+                        ? `Notifications, ${storeCount} unread`
+                        : "Notifications"
+                }
+                className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-ink"
             >
-                <span className="text-lg">🔔</span>
+                <IconBell />
                 {storeCount > 0 ? (
-                    <span className="absolute -right-0.5 -top-0.5 inline-flex min-w-[1.1rem] items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-semibold text-white">
+                    <span
+                        aria-hidden="true"
+                        className="absolute -right-0.5 -top-0.5 inline-flex min-w-[1.1rem] items-center justify-center rounded-full bg-ink px-1 font-mono text-[10px] font-semibold text-page"
+                    >
                         {storeCount > 99 ? "99+" : storeCount}
                     </span>
                 ) : null}
             </button>
 
             {open ? (
-                <div className="absolute right-0 z-40 mt-2 w-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
-                    <div className="flex items-center justify-between border-b border-slate-100 px-4 py-2.5">
-                        <span className="text-sm font-semibold text-slate-800">
+                <div className="fixed inset-x-4 top-16 z-40 overflow-hidden rounded-xl border border-line bg-surface shadow-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-80">
+                    <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
+                        <span className="font-display text-sm font-semibold tracking-tight text-ink">
                             Notifications
                         </span>
                         <button
                             type="button"
                             disabled={markingAll || storeCount === 0}
-                            onClick={async () => {
-                                await markAllRead()
-                                dispatch(setUnreadCount(0))
-                            }}
-                            className="text-xs font-medium text-brand-600 hover:text-brand-700 disabled:opacity-40"
+                            onClick={onMarkAll}
+                            className="text-xs font-medium text-muted underline-offset-4 transition-colors hover:text-ink hover:underline disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:no-underline"
                         >
                             Mark all read
                         </button>
                     </div>
 
-                    <div className="max-h-96 overflow-y-auto">
+                    <div className="max-h-[70vh] overflow-y-auto sm:max-h-96">
                         {isLoading ? (
-                            <div className="flex items-center gap-2 px-4 py-6 text-sm text-slate-500">
-                                <Spinner /> Loading…
+                            <div className="space-y-3 px-4 py-4">
+                                {[0, 1, 2].map((row) => (
+                                    <Skeleton key={row} className="h-10 w-full" />
+                                ))}
                             </div>
                         ) : items.length === 0 ? (
-                            <EmptyState title="You're all caught up" />
+                            <EmptyState
+                                title="You're all caught up"
+                                hint="Assignments and review requests will land here."
+                            />
                         ) : (
-                            <ul className="divide-y divide-slate-100">
-                                {items.map((item) => (
-                                    <li key={item._id}>
-                                        <button
-                                            type="button"
-                                            onClick={() => onOpenItem(item)}
-                                            className={`flex w-full gap-3 px-4 py-3 text-left hover:bg-slate-50 ${
-                                                item.isRead
-                                                    ? ""
-                                                    : "bg-brand-50/40"
-                                            }`}
-                                        >
-                                            <span className="text-base">
-                                                {TYPE_ICON[item.type] || "•"}
-                                            </span>
-                                            <span className="min-w-0">
-                                                <span className="block text-sm font-medium text-slate-800">
-                                                    {item.title}
+                            <ul className="divide-y divide-line">
+                                {items.map((item) => {
+                                    const Icon = TYPE_ICON[item.type] || IconInbox
+
+                                    return (
+                                        <li key={item._id}>
+                                            <button
+                                                type="button"
+                                                onClick={() => onOpenItem(item)}
+                                                className={`flex w-full gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-2 ${
+                                                    item.isRead
+                                                        ? ""
+                                                        : "bg-surface-2/60"
+                                                }`}
+                                            >
+                                                <Icon className="mt-0.5 h-4 w-4 shrink-0 text-faint" />
+                                                <span className="min-w-0 flex-1">
+                                                    <span className="block text-sm font-medium text-ink">
+                                                        {item.title}
+                                                    </span>
+                                                    <span className="mt-0.5 block text-xs text-muted">
+                                                        {item.message}
+                                                    </span>
+                                                    <span className="mt-1 block font-mono text-[11px] text-faint">
+                                                        {relativeTime(
+                                                            item.createdAt,
+                                                        )}
+                                                    </span>
                                                 </span>
-                                                <span className="mt-0.5 block text-xs text-slate-500">
-                                                    {item.message}
-                                                </span>
-                                                <span className="mt-1 block text-[11px] text-slate-400">
-                                                    {relativeTime(
-                                                        item.createdAt,
-                                                    )}
-                                                </span>
-                                            </span>
-                                            {item.isRead ? null : (
-                                                <span className="ml-auto mt-1 h-2 w-2 shrink-0 rounded-full bg-brand-500" />
-                                            )}
-                                        </button>
-                                    </li>
-                                ))}
+                                                {item.isRead ? null : (
+                                                    <span
+                                                        aria-label="Unread"
+                                                        className="ml-auto mt-1 h-2 w-2 shrink-0 rounded-full bg-ink"
+                                                    />
+                                                )}
+                                            </button>
+                                        </li>
+                                    )
+                                })}
                             </ul>
                         )}
                     </div>

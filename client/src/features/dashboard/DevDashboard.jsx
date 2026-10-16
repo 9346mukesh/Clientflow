@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useDispatch } from "react-redux"
 
 import {
     useGetTasksQuery,
@@ -9,9 +10,19 @@ import TaskTable from "../../components/tasks/TaskTable.jsx"
 import TaskDetailModal from "../../components/tasks/TaskDetailModal.jsx"
 import TaskFilters from "../../components/TaskFilters.jsx"
 import ActivityFeed from "../../components/ActivityFeed.jsx"
-import { Card, StatCard } from "../../components/ui.jsx"
+import { Card, PageHeader, StatCard, TableSkeleton } from "../../components/ui.jsx"
+import { pushToast } from "../ui/uiSlice.js"
+import { errorMessage } from "../../app/api/apiSlice.js"
+import { STATUS_LABELS } from "../../lib/constants.js"
+import { useDocumentMeta } from "../../lib/useDocumentMeta.js"
 
 const DevDashboard = () => {
+    useDocumentMeta(
+        "My tasks",
+        "The tasks assigned to you, sorted by priority and due date.",
+    )
+
+    const dispatch = useDispatch()
     const { filters } = useTaskFilters()
     const { data, isLoading } = useGetTasksQuery(filters)
     const [updateStatus] = useUpdateTaskStatusMutation()
@@ -22,40 +33,50 @@ const DevDashboard = () => {
     const inProgress = tasks.filter((t) => t.status === "IN_PROGRESS").length
     const overdue = tasks.filter((t) => t.isOverdue).length
 
-    return (
-        <div className="space-y-5">
-            <div>
-                <h1 className="text-lg font-semibold text-slate-900">
-                    My tasks
-                </h1>
-                <p className="text-sm text-slate-500">
-                    Sorted by priority, then due date.
-                </p>
-            </div>
+    const onStatus = async (id, status) => {
+        try {
+            await updateStatus({ id, status }).unwrap()
+            dispatch(
+                pushToast({ message: `Task moved to ${STATUS_LABELS[status]}.` }),
+            )
+        } catch (error) {
+            dispatch(
+                pushToast({ tone: "error", message: errorMessage(error) }),
+            )
+        }
+    }
 
-            <div className="grid grid-cols-3 gap-4">
-                <StatCard label="Assigned to me" value={tasks.length} tone="brand" />
+    return (
+        <div className="space-y-6">
+            <PageHeader
+                eyebrow={`Developer · ${String(tasks.length).padStart(2, "0")} tasks`}
+                title="My tasks"
+                description="Sorted by priority, then due date."
+            />
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <StatCard label="Assigned to me" value={tasks.length} />
                 <StatCard label="In progress" value={inProgress} />
-                <StatCard label="Overdue" value={overdue} tone="rose" />
+                <StatCard
+                    label="Overdue"
+                    value={overdue}
+                    tone={overdue > 0 ? "danger" : "ink"}
+                />
             </div>
 
             <Card>
-                <div className="border-b border-slate-100 px-5 py-4">
+                <div className="border-b border-line px-4 py-4 sm:px-5">
                     <TaskFilters />
                 </div>
                 {isLoading ? (
-                    <p className="px-5 py-6 text-sm text-slate-500">
-                        Loading tasks…
-                    </p>
+                    <TableSkeleton rows={5} cols={6} />
                 ) : (
                     <TaskTable
                         tasks={tasks}
                         showProject
                         canChangeStatus
                         onOpen={setOpenTaskId}
-                        onStatus={(id, status) =>
-                            updateStatus({ id, status })
-                        }
+                        onStatus={onStatus}
                     />
                 )}
             </Card>

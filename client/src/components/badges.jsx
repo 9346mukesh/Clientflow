@@ -27,17 +27,14 @@ export const ProjectStatusBadge = ({ status }) => (
     </Badge>
 )
 
-// a due date, called out when the task is late and not finished
+// A due date, called out when the task is late and not finished.
 export const DueDate = ({ date, status }) => {
     const late = status !== "DONE" && isPast(date)
 
     return (
-        <span
-            className={
-                late ? "font-medium text-rose-600" : "text-slate-600"
-            }
-        >
-            {formatDate(date)}
+        <span className={late ? "font-medium text-danger" : "text-muted"}>
+            {/* Keep the date itself on one line; the "overdue" suffix may wrap. */}
+            <span className="whitespace-nowrap">{formatDate(date)}</span>
             {late ? " · overdue" : ""}
         </span>
     )

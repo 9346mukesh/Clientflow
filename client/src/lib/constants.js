@@ -34,31 +34,47 @@ export const PROJECT_STATUS_LABELS = {
     DELIVERED: "Delivered",
 }
 
-export const STATUS_STYLES = {
-    TODO: "bg-slate-100 text-slate-700 ring-slate-200",
-    IN_PROGRESS: "bg-blue-50 text-blue-700 ring-blue-200",
-    IN_REVIEW: "bg-amber-50 text-amber-700 ring-amber-200",
-    DONE: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-}
-
-export const PRIORITY_STYLES = {
-    LOW: "bg-slate-100 text-slate-600 ring-slate-200",
-    MEDIUM: "bg-sky-50 text-sky-700 ring-sky-200",
-    HIGH: "bg-orange-50 text-orange-700 ring-orange-200",
-    CRITICAL: "bg-rose-50 text-rose-700 ring-rose-200",
-}
-
-export const PROJECT_STATUS_STYLES = {
-    REQUIREMENT_ANALYSIS: "bg-slate-100 text-slate-700 ring-slate-200",
-    DESIGN: "bg-violet-50 text-violet-700 ring-violet-200",
-    DEVELOPMENT: "bg-blue-50 text-blue-700 ring-blue-200",
-    TESTING: "bg-amber-50 text-amber-700 ring-amber-200",
-    DEPLOYMENT: "bg-teal-50 text-teal-700 ring-teal-200",
-    DELIVERED: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-}
-
 export const ROLE_LABELS = {
     ADMIN: "Admin",
     PROJECT_MANAGER: "Project Manager",
     DEVELOPER: "Developer",
 }
+
+/*
+ * Chip styling. Colour is used sparingly: two neutral weights carry the
+ * "open" states, amber means "needs attention", green means "finished", and
+ * only red marks something dangerous or late.
+ */
+export const STATUS_STYLES = {
+    TODO: "bg-surface-2 text-muted ring-line",
+    IN_PROGRESS: "bg-surface text-ink ring-line-strong",
+    IN_REVIEW:
+        "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:ring-amber-900",
+    DONE: "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900",
+}
+
+/*
+ * Priority is encoded by weight rather than four competing hues: outline →
+ * tinted → amber → red. Scannable, and it never reads as rainbow.
+ */
+export const PRIORITY_STYLES = {
+    LOW: "bg-transparent text-faint ring-line",
+    MEDIUM: "bg-surface-2 text-muted ring-line-strong",
+    HIGH: "bg-orange-50 text-orange-700 ring-orange-200 dark:bg-orange-950/50 dark:text-orange-300 dark:ring-orange-900",
+    CRITICAL:
+        "bg-red-50 text-red-700 ring-red-200 dark:bg-red-950/50 dark:text-red-300 dark:ring-red-900",
+}
+
+export const PROJECT_STATUS_STYLES = {
+    REQUIREMENT_ANALYSIS: "bg-transparent text-faint ring-line",
+    DESIGN: "bg-surface-2 text-muted ring-line-strong",
+    DEVELOPMENT: "bg-ink text-page ring-ink",
+    TESTING:
+        "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:ring-amber-900",
+    DEPLOYMENT:
+        "bg-teal-50 text-teal-700 ring-teal-200 dark:bg-teal-950/50 dark:text-teal-300 dark:ring-teal-900",
+    DELIVERED:
+        "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900",
+}
+
+export const SUPPORT_EMAIL = "support@clientflow.app"

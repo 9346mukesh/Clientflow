@@ -5,6 +5,11 @@ import { Navigate, Route, Routes } from "react-router-dom"
 import { bootstrapAuth } from "./features/auth/authSlice.js"
 import { ProtectedRoute, Splash } from "./components/auth-guards.jsx"
 import AppLayout from "./components/Layout.jsx"
+import BackToTop from "./components/BackToTop.jsx"
+import CookieBanner from "./components/CookieBanner.jsx"
+import ScrollProgress from "./components/ScrollProgress.jsx"
+import Toaster from "./components/Toaster.jsx"
+import { ThemeSync } from "./features/theme/ThemeToggle.jsx"
 import LoginPage from "./pages/LoginPage.jsx"
 import ChangePasswordPage from "./pages/ChangePasswordPage.jsx"
 import DashboardPage from "./pages/DashboardPage.jsx"
@@ -15,6 +20,11 @@ import ClientsPage from "./pages/ClientsPage.jsx"
 import UsersPage from "./pages/UsersPage.jsx"
 import ActivityPage from "./pages/ActivityPage.jsx"
 import NotFoundPage from "./pages/NotFoundPage.jsx"
+import {
+    CookiePolicyPage,
+    PrivacyPolicyPage,
+    TermsPage,
+} from "./pages/LegalPages.jsx"
 
 const App = () => {
     const dispatch = useDispatch()
@@ -33,75 +43,100 @@ const App = () => {
         dispatch(bootstrapAuth())
     }, [dispatch])
 
-    if (status === "loading") return <Splash />
-
+    // Routes render straight away so pages that need no account (the legal
+    // set) paint without waiting on the refresh round-trip. Anything that does
+    // need an account waits inside ProtectedRoute, which shows the splash.
     return (
-        <Routes>
-            <Route
-                path="/login"
-                element={
-                    isAuthed ? <Navigate to="/" replace /> : <LoginPage />
-                }
-            />
+        <>
+            <ThemeSync />
+            <ScrollProgress />
 
-            <Route
-                path="/change-password"
-                element={
-                    <ProtectedRoute>
-                        <ChangePasswordPage />
-                    </ProtectedRoute>
-                }
-            />
-
-            <Route
-                element={
-                    <ProtectedRoute>
-                        <AppLayout />
-                    </ProtectedRoute>
-                }
-            >
-                <Route index element={<DashboardPage />} />
-
+            <Routes>
                 <Route
-                    path="projects"
+                    path="/login"
                     element={
-                        <ProtectedRoute roles={["ADMIN", "PROJECT_MANAGER"]}>
-                            <ProjectsPage />
-                        </ProtectedRoute>
+                        status === "loading" ? (
+                            <Splash />
+                        ) : isAuthed ? (
+                            <Navigate to="/" replace />
+                        ) : (
+                            <LoginPage />
+                        )
                     }
                 />
-                <Route path="projects/:id" element={<ProjectDetailPage />} />
 
-                <Route path="tasks" element={<TasksPage />} />
+                {/* Public reading pages: no account needed. */}
+                <Route path="/privacy" element={<PrivacyPolicyPage />} />
+                <Route path="/terms" element={<TermsPage />} />
+                <Route path="/cookies" element={<CookiePolicyPage />} />
 
                 <Route
-                    path="clients"
+                    path="/change-password"
                     element={
-                        <ProtectedRoute roles={["ADMIN"]}>
-                            <ClientsPage />
-                        </ProtectedRoute>
-                    }
-                />
-                <Route
-                    path="users"
-                    element={
-                        <ProtectedRoute roles={["ADMIN"]}>
-                            <UsersPage />
-                        </ProtectedRoute>
-                    }
-                />
-                <Route
-                    path="activity"
-                    element={
-                        <ProtectedRoute roles={["ADMIN", "PROJECT_MANAGER"]}>
-                            <ActivityPage />
+                        <ProtectedRoute>
+                            <ChangePasswordPage />
                         </ProtectedRoute>
                     }
                 />
 
-                <Route path="*" element={<NotFoundPage />} />
-            </Route>
-        </Routes>
+                <Route
+                    element={
+                        <ProtectedRoute>
+                            <AppLayout />
+                        </ProtectedRoute>
+                    }
+                >
+                    <Route index element={<DashboardPage />} />
+
+                    <Route
+                        path="projects"
+                        element={
+                            <ProtectedRoute
+                                roles={["ADMIN", "PROJECT_MANAGER"]}
+                            >
+                                <ProjectsPage />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route path="projects/:id" element={<ProjectDetailPage />} />
+
+                    <Route path="tasks" element={<TasksPage />} />
+
+                    <Route
+                        path="clients"
+                        element={
+                            <ProtectedRoute roles={["ADMIN"]}>
+                                <ClientsPage />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="users"
+                        element={
+                            <ProtectedRoute roles={["ADMIN"]}>
+                                <UsersPage />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="activity"
+                        element={
+                            <ProtectedRoute
+                                roles={["ADMIN", "PROJECT_MANAGER"]}
+                            >
+                                <ActivityPage />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    <Route path="*" element={<NotFoundPage />} />
+                </Route>
+            </Routes>
+
+            <Toaster />
+            <BackToTop />
+            <CookieBanner />
+        </>
     )
 }
 
