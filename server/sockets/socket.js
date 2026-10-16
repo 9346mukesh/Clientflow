@@ -3,7 +3,6 @@ import jwt from "jsonwebtoken"
 import mongoose from "mongoose"
 import User from "../models/user.model.js"
 import Project from "../models/project.model.js"
-import Task from "../models/task.model.js"
 
 let io
 
@@ -18,7 +17,12 @@ const broadcastPresence = () => {
     io.to("admin").emit("presence:count", { count: presenceCount() })
 }
 
-// a socket may only join a project room it is actually allowed to look at
+// a socket may only join a project room it is actually allowed to read.
+//
+// A developer never qualifies. A project room carries every task in the
+// project, and a developer may only ever read the tasks assigned to them, so
+// letting them join would leak the rest of the board. Their own task changes
+// arrive in their private user room instead (see emitTaskChange).
 const canAccessProject = async (user, projectId) => {
     if (user.role === "ADMIN") return true
 
@@ -31,10 +35,7 @@ const canAccessProject = async (user, projectId) => {
         )
     }
 
-    // a developer may watch a project only if a task of theirs lives in it
-    return Boolean(
-        await Task.exists({ project: projectId, assignedTo: user.userId }),
-    )
+    return false
 }
 
 export const initSocket = (httpServer) => {

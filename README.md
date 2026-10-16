@@ -213,20 +213,24 @@ than hand-rolling those on top of a raw `WebSocket`.
 
 | Room            | Who is in it                     | What it receives                          |
 | --------------- | -------------------------------- | ----------------------------------------- |
-| `user:<id>`     | every socket of one user         | personal feed rows + their notifications  |
+| `user:<id>`     | every socket of one user         | personal feed rows, their notifications, and changes to their own tasks |
 | `admin`         | all admins                       | global feed + live presence count         |
-| `project:<id>`  | anyone currently viewing a project | board updates (`task:*`)                |
+| `project:<id>`  | an admin or the PM who owns it   | board updates (`task:*`)                  |
 
 A client joins a project room with `project:join`; the server re-checks access
-(admin = any, PM = owns it, developer = has a task in it) before allowing the
-join. `project:leave` runs on unmount.
+before allowing the join. Only an admin and the owning PM qualify. A developer
+is **never** admitted: a project room carries every task in the project, and a
+developer may only read the tasks assigned to them. Their own task changes reach
+them through their private `user:<id>` room instead, so the live channel is
+exactly as wide as the REST scope and never wider. `project:leave` runs on
+unmount.
 
 ### Events emitted after a DB write
 
 `activity:new` (to the project room, the `admin` room, the PM, and the assigned
 developer), `task:created` / `task:updated` / `task:deleted` (to the project
-room), `notification:new` and `notification:count` (to the user), and
-`presence:count` (to admins).
+room and to the assignee's private room), `notification:new` and
+`notification:count` (to the user), and `presence:count` (to admins).
 
 ### Missed events on reconnect
 
@@ -336,6 +340,13 @@ token), every protected route without a token, and cross-tenant ids for tasks,
 projects, activity and notifications. It asserts the allowed paths still work,
 so a guard cannot pass by refusing everyone. One throwaway project is created
 and deleted; nothing else is written.
+
+`npm run test:authz:socket` covers the real-time half of the same rules with
+`scripts/socketAuthzTest.js`: a socket with no token or a rewritten role is
+refused at the handshake, a developer cannot join a project room even when it
+holds their own task, a developer receives nothing about another developer's
+task, and a developer still receives their own task and status changes live.
+Two throwaway tasks are created and deleted.
 
 ### Known trade-off
 

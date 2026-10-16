@@ -74,10 +74,22 @@ export const emitActivity = async (ids) => {
     }
 }
 
-// board updates: let everyone viewing the project redraw without refreshing
-export const emitTaskChange = (projectId, event, payload) => {
+// board updates: let everyone viewing the project redraw without refreshing.
+//
+// A developer is deliberately never in a project room, because that room
+// carries every task in the project. Their own task changes are delivered to
+// their private user room through `extraRooms`, so the project room stays
+// exactly the set of people who may read the whole project.
+export const emitTaskChange = (projectId, event, payload, extraRooms = []) => {
     if (!projectId) return
-    getIO().to(`project:${projectId}`).emit(event, payload)
+
+    const io = getIO()
+
+    io.to(`project:${projectId}`).emit(event, payload)
+
+    for (const room of new Set(extraRooms.filter(Boolean))) {
+        io.to(room).emit(event, payload)
+    }
 }
 
 // project list updates for admins and the owning PM

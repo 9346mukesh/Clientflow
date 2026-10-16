@@ -73,11 +73,17 @@ export const runOverdueSweep = async () => {
             })
         }
 
-        // any board watching this project redraws the card immediately
-        emitTaskChange(task.project.toString(), "task:updated", {
-            _id: task._id,
-            isOverdue: true,
-        })
+        // any board watching this project redraws the card immediately, and the
+        // assignee hears about it in their private room
+        emitTaskChange(
+            task.project.toString(),
+            "task:updated",
+            {
+                _id: task._id,
+                isOverdue: true,
+            },
+            [task.assignedTo ? `user:${task.assignedTo}` : null],
+        )
     }
 
     if (logs.length > 0) {

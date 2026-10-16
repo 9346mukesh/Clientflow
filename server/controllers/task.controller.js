@@ -181,7 +181,9 @@ export const handleCreateTask = async (req, res) => {
         const populated = await task.populate("assignedTo", "firstName lastName email")
 
         // 8. Push the change to everyone watching this project, and the feeds
-        emitTaskChange(project._id.toString(), "task:created", populated)
+        emitTaskChange(project._id.toString(), "task:created", populated, [
+            `user:${developer._id}`,
+        ])
         await emitActivity(logs.map((log) => log._id))
         await emitNotification(notification._id)
 
@@ -490,7 +492,12 @@ export const handleUpdateTask = async (req, res) => {
         ])
 
         // everyone watching the project redraws the card, feeds and badges update
-        emitTaskChange(projectId, "task:updated", populated)
+        // both assignees are told: the developer losing the task and the one
+        // gaining it, since neither of them is in the project room
+        emitTaskChange(projectId, "task:updated", populated, [
+            `user:${oldDeveloperId}`,
+            newDeveloper ? `user:${newDeveloper._id}` : null,
+        ])
         await emitActivity(createdLogs.map((log) => log._id))
         if (notification) await emitNotification(notification._id)
 
@@ -531,14 +538,18 @@ export const handleDeleteTask = async (req, res) => {
         }
 
         const projectId = task.project.toString()
+        const assigneeId = task.assignedTo?.toString()
 
         // remove everything that points at this task
         await ActivityLog.deleteMany({ task: task._id })
         await Notification.deleteMany({ task: task._id })
         await task.deleteOne()
 
-        // tell any board showing this project to drop the card
-        emitTaskChange(projectId, "task:deleted", { _id: task._id })
+        // tell any board showing this project to drop the card, and tell the
+        // developer whose task it was, who is not in the project room
+        emitTaskChange(projectId, "task:deleted", { _id: task._id }, [
+            assigneeId ? `user:${assigneeId}` : null,
+        ])
 
         return res.status(200).json({
             success: true,
@@ -707,13 +718,21 @@ export const handleUpdateTaskStatus = async (req, res) => {
 
         const projectId = result.task.project.toString()
 
+        // capture the assignee id before populate swaps the ObjectId for a
+        // document, otherwise the room name would be built from an object
+        const assigneeId = result.task.assignedTo?.toString()
+
         const populated = await result.task.populate([
             { path: "project", select: "projectTitle" },
             { path: "assignedTo", select: "firstName lastName email" }
         ])
 
-        // after the transaction commits, fan the change out to the sockets
-        emitTaskChange(projectId, "task:updated", populated)
+        // after the transaction commits, fan the change out to the sockets.
+        // the assignee gets it in their private room, since a developer is
+        // never a member of the project room
+        emitTaskChange(projectId, "task:updated", populated, [
+            assigneeId ? `user:${assigneeId}` : null,
+        ])
         await emitActivity(createdLog?._id)
         if (createdNotification) await emitNotification(createdNotification._id)
 

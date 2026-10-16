@@ -98,7 +98,16 @@ const App = () => {
                             </ProtectedRoute>
                         }
                     />
-                    <Route path="projects/:id" element={<ProjectDetailPage />} />
+                    <Route
+                        path="projects/:id"
+                        element={
+                            <ProtectedRoute
+                                roles={["ADMIN", "PROJECT_MANAGER"]}
+                            >
+                                <ProjectDetailPage />
+                            </ProtectedRoute>
+                        }
+                    />
 
                     <Route path="tasks" element={<TasksPage />} />
 
