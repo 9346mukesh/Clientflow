@@ -326,6 +326,25 @@ would be wrong).
 - **Socket auth** happens in a handshake middleware; role and active status are
   re-read from the database so a deactivated account loses its socket.
 
+### Verifying the authorization rules
+
+Run `npm run test:authz` from `server/` with the API up. `scripts/authzTest.js`
+signs in as an admin, two project managers and two developers, then attacks the
+API rather than the UI: forged tokens (role rewritten, `userId` swapped,
+`alg: none`, signed with the wrong secret, refresh token used as an access
+token), every protected route without a token, and cross-tenant ids for tasks,
+projects, activity and notifications. It asserts the allowed paths still work,
+so a guard cannot pass by refusing everyone. One throwaway project is created
+and deleted; nothing else is written.
+
+### Known trade-off
+
+`authMiddleware` trusts the `role` in the signed access token, so a demotion or
+deactivation reaches the REST API only when that token expires (15 minutes at
+most). The refresh endpoint and the socket handshake both re-read the user from
+the database, so they cut the user off immediately. Re-reading the role on every
+request would add a database round trip to every call.
+
 ---
 
 ## Validation and error handling
