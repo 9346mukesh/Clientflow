@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+@theme {
+    --color-ink-950: #0b1120;
+    --color-ink-900: #111827;
+    --color-ink-800: #1f2937;
+    --color-brand-50: #eef2ff;
+    --color-brand-100: #e0e7ff;
+    --color-brand-500: #6366f1;
+    --color-brand-600: #4f46e5;
+    --color-brand-700: #4338ca;
+}
+
+html,
+body,
+#root {
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    background-color: #f1f5f9;
+    color: #0f172a;
+    font-family:
+        ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
+        Arial, sans-serif;
+}
+
+/* a subtle pulse for the live-presence dot */
+@keyframes livePulse {
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.45;
+        transform: scale(0.82);
+    }
+}
+
+.live-dot {
+    animation: livePulse 1.6s ease-in-out infinite;
+}
