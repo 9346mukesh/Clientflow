@@ -1,67 +1,69 @@
 import bcrypt from "bcrypt"
 import jwt from "jsonwebtoken"
 import User from "../models/user.model.js"
-import {generateAccessToken, generateRefreshToken } from "../utils/generateTokens.js"
+import {
+    generateAccessToken,
+    generateRefreshToken,
+} from "../utils/generateTokens.js"
 
 export const handleRegister = async (req, res) => {
-  const { firstName, lastName, email, password, gender, jobTitle, role } = req.body
+    const { firstName, lastName, email, password, gender, jobTitle, role } =
+        req.body
 
-  if (!firstName || !email || !password) {
-    return res.status(400).json({
-      success: false,
-      message: "First name, email, and password are required",
-    })
-  }
-
-  try {
-
-    const normalizedEmail = email.toLowerCase().trim()
-
-    // 3. Check for existing user
-    const existingUser = await User.findOne({ email: normalizedEmail })
-    if (existingUser) {
-      return res.status(409).json({
-        success: false,
-        message: "An account with this email already exists",
-      })
+    if (!firstName || !email || !password) {
+        return res.status(400).json({
+            success: false,
+            message: "First name, email, and password are required",
+        })
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10)
+    try {
+        const normalizedEmail = email.toLowerCase().trim()
 
-    const allowedRoles = ["DEVELOPER"]
-    const safeRole = allowedRoles.includes(role) ? role : "DEVELOPER"
+        // 3. Check for existing user
+        const existingUser = await User.findOne({ email: normalizedEmail })
+        if (existingUser) {
+            return res.status(409).json({
+                success: false,
+                message: "An account with this email already exists",
+            })
+        }
 
-    // 6. Create new user
-    const newUser = await User.create({
-      firstName: firstName.trim(),
-      lastName: lastName ? lastName.trim() : "",
-      email: normalizedEmail,
-      password: hashedPassword,
-      gender,
-      jobTitle,
-      role: safeRole,
-    })
+        const hashedPassword = await bcrypt.hash(password, 10)
 
-    // 7. Return sanitized response
-    return res.status(201).json({
-      success: true,
-      message: "User registered successfully",
-      data: {
-        id: newUser._id,
-        firstName: newUser.firstName,
-        email: newUser.email,
-        role: newUser.role,
-      },
-    })
-  } catch (error) {
-    console.error("Registration Error:", error)
-    return res.status(500).json({
-      success: false,
-      message: "An internal server error occurred",
-    })
-  }
+        const allowedRoles = ["DEVELOPER"]
+        const safeRole = allowedRoles.includes(role) ? role : "DEVELOPER"
+
+        // 6. Create new user
+        const newUser = await User.create({
+            firstName: firstName.trim(),
+            lastName: lastName ? lastName.trim() : "",
+            email: normalizedEmail,
+            password: hashedPassword,
+            gender,
+            jobTitle,
+            role: safeRole,
+        })
+
+        // 7. Return sanitized response
+        return res.status(201).json({
+            success: true,
+            message: "User registered successfully",
+            data: {
+                id: newUser._id,
+                firstName: newUser.firstName,
+                email: newUser.email,
+                role: newUser.role,
+            },
+        })
+    } catch (error) {
+        console.error("Registration Error:", error)
+        return res.status(500).json({
+            success: false,
+            message: "An internal server error occurred",
+        })
+    }
 }
-
 
 export const handleLogin = async (req, res) => {
     const { email, password } = req.body
@@ -69,7 +71,7 @@ export const handleLogin = async (req, res) => {
     if (!email || !password) {
         return res.status(400).json({
             success: false,
-            message: "Email and password are required"
+            message: "Email and password are required",
         })
     }
 
@@ -85,14 +87,14 @@ export const handleLogin = async (req, res) => {
         if (!user || !isPasswordValid) {
             return res.status(401).json({
                 success: false,
-                message: "Invalid email or password"
+                message: "Invalid email or password",
             })
         }
 
         if (!user.isActive) {
             return res.status(403).json({
                 success: false,
-                message: "Your account is inactive"
+                message: "Your account is inactive",
             })
         }
 
@@ -104,7 +106,7 @@ export const handleLogin = async (req, res) => {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "strict",
-            maxAge: 7 * 24 * 60 * 60 * 1000
+            maxAge: 7 * 24 * 60 * 60 * 1000,
         })
 
         return res.status(200).json({
@@ -116,17 +118,16 @@ export const handleLogin = async (req, res) => {
                 lastName: user.lastName,
                 email: user.email,
                 role: user.role,
-                mustChangePassword: user.mustChangePassword
+                mustChangePassword: user.mustChangePassword,
             },
-            accessToken
+            accessToken,
         })
-
     } catch (error) {
         console.error("Login Error:", error)
 
         return res.status(500).json({
             success: false,
-            message: "An internal server error occurred"
+            message: "An internal server error occurred",
         })
     }
 }
@@ -139,7 +140,7 @@ export const handleRefresh = async (req, res) => {
         if (!refreshToken) {
             return res.status(401).json({
                 success: false,
-                message: "Refresh token is required"
+                message: "Refresh token is required",
             })
         }
 
@@ -151,32 +152,31 @@ export const handleRefresh = async (req, res) => {
         if (!user) {
             return res.status(401).json({
                 success: false,
-                message: "User not found"
+                message: "User not found",
             })
         }
 
         if (!user.isActive) {
             return res.status(403).json({
                 success: false,
-                message: "Your account is inactive"
+                message: "Your account is inactive",
             })
         }
 
         // 5. Generate a new access token
-        const { accessToken } = generateAccessToken(user)
+        const accessToken = generateAccessToken(user)
 
         // 6. Send it back
         return res.status(200).json({
             success: true,
-            accessToken
+            accessToken,
         })
-
     } catch (error) {
         console.error("Refresh Token Error:", error)
 
         return res.status(401).json({
             success: false,
-            message: "Invalid or expired refresh token"
+            message: "Invalid or expired refresh token",
         })
     }
 }
@@ -188,7 +188,7 @@ export const handleChangePassword = async (req, res) => {
     if (!currentPassword || !newPassword) {
         return res.status(400).json({
             success: false,
-            message: "Current password and new password are required"
+            message: "Current password and new password are required",
         })
     }
 
@@ -199,20 +199,20 @@ export const handleChangePassword = async (req, res) => {
         if (!user) {
             return res.status(404).json({
                 success: false,
-                message: "User not found"
+                message: "User not found",
             })
         }
 
         // 3. Verify current password
         const isPasswordValid = await bcrypt.compare(
             currentPassword,
-            user.password
+            user.password,
         )
 
         if (!isPasswordValid) {
             return res.status(401).json({
                 success: false,
-                message: "Current password is incorrect"
+                message: "Current password is incorrect",
             })
         }
 
@@ -227,15 +227,14 @@ export const handleChangePassword = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: "Password changed successfully"
+            message: "Password changed successfully",
         })
-
     } catch (error) {
         console.error("Change Password Error:", error)
 
         return res.status(500).json({
             success: false,
-            message: "An internal server error occurred"
+            message: "An internal server error occurred",
         })
     }
 }
@@ -245,19 +244,19 @@ export const handleLogout = async (req, res) => {
         res.clearCookie("refreshToken", {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
-            sameSite: "strict"
+            sameSite: "strict",
         })
 
         return res.status(200).json({
             success: true,
-            message: "Logout successful"
+            message: "Logout successful",
         })
     } catch (error) {
         console.error("Logout Error:", error)
 
         return res.status(500).json({
             success: false,
-            message: "An internal server error occurred"
+            message: "An internal server error occurred",
         })
     }
 }
@@ -269,7 +268,7 @@ export const handleMe = async (req, res) => {
         if (!user) {
             return res.status(404).json({
                 success: false,
-                message: "User not found"
+                message: "User not found",
             })
         }
 
@@ -283,18 +282,24 @@ export const handleMe = async (req, res) => {
                 role: user.role,
                 jobTitle: user.jobTitle,
                 isActive: user.isActive,
-                mustChangePassword: user.mustChangePassword
-            }
+                mustChangePassword: user.mustChangePassword,
+            },
         })
-
     } catch (error) {
         console.error("Get Me Error:", error)
 
         return res.status(500).json({
             success: false,
-            message: "An internal server error occurred"
+            message: "An internal server error occurred",
         })
     }
 }
 
-export default {handleRegister, handleLogin, handleRefresh, handleLogout, handleMe, handleChangePassword}
+export default {
+    handleRegister,
+    handleLogin,
+    handleRefresh,
+    handleLogout,
+    handleMe,
+    handleChangePassword,
+}

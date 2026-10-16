@@ -6,7 +6,7 @@ const requestTimer = (req, res, next) => {
         const duration = endTime - startTime
 
         console.log(
-            `${req.method} ${req.originalUrl} - ${res.statusCode} - ${duration}ms`
+            `${req.method} ${req.originalUrl} - ${res.statusCode} - ${duration}ms`,
         )
     })
 

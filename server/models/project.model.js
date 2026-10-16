@@ -1,40 +1,39 @@
-import mongoose from "mongoose";
+import mongoose from "mongoose"
 
 const projectSchema = new mongoose.Schema(
     {
         projectTitle: {
             type: String,
-            unique: true,
             required: true,
             trim: true,
-            maxlength: 150
+            maxlength: 150,
         },
 
         projectDescription: {
             type: String,
             required: true,
             trim: true,
-            maxlength: 2000
+            maxlength: 2000,
         },
 
         client: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Client",
-            required: true
+            required: true,
         },
 
         // who created the record (Admin or PM), for audit
         createdBy: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
-            required: true
+            required: true,
         },
 
         // the PM who owns and manages the project; PM queries filter on this
         projectManager: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
-            required: true
+            required: true,
         },
 
         status: {
@@ -45,27 +44,27 @@ const projectSchema = new mongoose.Schema(
                 "DEVELOPMENT",
                 "TESTING",
                 "DEPLOYMENT",
-                "DELIVERED"
+                "DELIVERED",
             ],
-            default: "REQUIREMENT_ANALYSIS"
+            default: "REQUIREMENT_ANALYSIS",
         },
 
         // last used task number; incremented atomically when a task is created
         taskCounter: {
             type: Number,
-            default: 0
-        }
+            default: 0,
+        },
     },
-    { timestamps: true }
-);
+    { timestamps: true },
+)
 
 // PM project list, newest first
-projectSchema.index({ projectManager: 1, createdAt: -1 });
+projectSchema.index({ projectManager: 1, createdAt: -1 })
 // projects of a client
-projectSchema.index({ client: 1 });
+projectSchema.index({ client: 1 })
 // same title allowed for different clients, not twice for one client
-projectSchema.index({ client: 1, projectTitle: 1 }, { unique: true });
+projectSchema.index({ client: 1, projectTitle: 1 }, { unique: true })
 
-const Project = mongoose.model("Project", projectSchema);
+const Project = mongoose.model("Project", projectSchema)
 
-export default Project;
+export default Project

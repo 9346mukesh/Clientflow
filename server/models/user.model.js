@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose from "mongoose"
 
 const userSchema = new mongoose.Schema(
     {
@@ -7,13 +7,13 @@ const userSchema = new mongoose.Schema(
             required: true,
             trim: true,
             minlength: 2,
-            maxlength: 50
+            maxlength: 50,
         },
 
         lastName: {
             type: String,
             trim: true,
-            maxlength: 50
+            maxlength: 50,
         },
 
         email: {
@@ -21,64 +21,64 @@ const userSchema = new mongoose.Schema(
             required: true,
             unique: true,
             lowercase: true,
-            trim: true
+            trim: true,
         },
 
         // stores the bcrypt hash, never the raw password
         password: {
             type: String,
             required: true,
-            select: false
+            select: false,
         },
 
         gender: {
             type: String,
-            enum: ["MALE", "FEMALE", "OTHER"]
+            enum: ["MALE", "FEMALE", "OTHER"],
         },
 
         jobTitle: {
             type: String,
             trim: true,
-            maxlength: 100
+            maxlength: 100,
         },
 
         role: {
             type: String,
             required: true,
-            enum: ["ADMIN", "PROJECT_MANAGER", "DEVELOPER"]
+            enum: ["ADMIN", "PROJECT_MANAGER", "DEVELOPER"],
         },
 
         // account enabled or disabled by admin (not "online now")
         isActive: {
             type: Boolean,
-            default: true
+            default: true,
         },
 
         // true when admin creates the user with a temporary password
         mustChangePassword: {
             type: Boolean,
-            default: false
+            default: false,
         },
 
         // null for the seeded admin, otherwise the admin who created the user
         createdBy: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
-            default: null
-        }
+            default: null,
+        },
     },
-    { timestamps: true }
-);
+    { timestamps: true },
+)
 
 // never send the password hash in API responses
 userSchema.set("toJSON", {
     transform: (_doc, ret) => {
-        delete ret.password;
-        delete ret.__v;
-        return ret;
-    }
-});
+        delete ret.password
+        delete ret.__v
+        return ret
+    },
+})
 
-const User = mongoose.model("User", userSchema);
+const User = mongoose.model("User", userSchema)
 
-export default User;
+export default User

@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose from "mongoose"
 
 const clientSchema = new mongoose.Schema(
     {
@@ -6,14 +6,14 @@ const clientSchema = new mongoose.Schema(
             type: String,
             required: true,
             trim: true,
-            maxlength: 100
+            maxlength: 100,
         },
 
         companyName: {
             type: String,
             required: true,
             trim: true,
-            maxlength: 150
+            maxlength: 150,
         },
 
         email: {
@@ -21,30 +21,30 @@ const clientSchema = new mongoose.Schema(
             required: true,
             unique: true,
             lowercase: true,
-            trim: true
+            trim: true,
         },
 
         phone: {
             type: String,
             trim: true,
-            maxlength: 20
+            maxlength: 20,
         },
 
         // false = hidden from dropdowns, but old projects still resolve
         isActive: {
             type: Boolean,
-            default: true
+            default: true,
         },
 
         createdBy: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
-            required: true
-        }
+            required: true,
+        },
     },
-    { timestamps: true }
-);
+    { timestamps: true },
+)
 
-const Client = mongoose.model("Client", clientSchema);
+const Client = mongoose.model("Client", clientSchema)
 
-export default Client;
+export default Client
