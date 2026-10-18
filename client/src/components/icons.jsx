@@ -56,6 +56,12 @@ export const IconChevronRight = ({ className = "h-4 w-4" }) => (
     </svg>
 )
 
+export const IconChevronLeft = ({ className = "h-4 w-4" }) => (
+    <svg {...base} className={className}>
+        <path d="M14.5 5.5L8 12l6.5 6.5" />
+    </svg>
+)
+
 export const IconCheck = ({ className = "h-4 w-4" }) => (
     <svg {...base} className={className} strokeWidth={2}>
         <path d="M4.5 12.5l5 5 10-11" />

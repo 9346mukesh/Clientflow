@@ -64,7 +64,10 @@ export const handleGetActivity = async (req, res) => {
 
         const logs = await ActivityLog.find({ $and: conditions })
             .populate(ACTIVITY_POPULATE)
-            .sort({ createdAt: -1 })
+            // _id breaks time ties. A task is created and assigned in one write,
+            // so both rows land on the same millisecond and the ids — which are
+            // monotonic — are what put the newer event first.
+            .sort({ createdAt: -1, _id: -1 })
             .limit(pageSize)
 
         return res.status(200).json({

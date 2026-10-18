@@ -14,6 +14,8 @@ import { ROLE_LABELS } from "../lib/constants.js"
 import { Avatar, IconButton } from "./ui.jsx"
 import {
     IconActivity,
+    IconChevronLeft,
+    IconChevronRight,
     IconClients,
     IconClose,
     IconDashboard,
@@ -43,15 +45,19 @@ const NAV_BY_ROLE = {
     ],
 }
 
-// A 2px graphite marker on the left edge marks the current page.
-const linkClass = ({ isActive }) =>
-    `flex items-center gap-3 rounded-lg border-l-2 py-2 pl-2.5 pr-3 text-sm transition-colors ${
-        isActive
-            ? "border-ink bg-surface-2 font-semibold text-ink"
-            : "border-transparent font-medium text-muted hover:bg-surface-2 hover:text-ink"
-    }`
+// A 2px graphite marker on the left edge marks the current page. On the
+// collapsed rail the label is gone, so the icon alone carries the link.
+const linkClass = (collapsed) =>
+    ({ isActive }) =>
+        `flex items-center whitespace-nowrap rounded-lg border-l-2 text-sm transition-colors ${
+            collapsed ? "justify-center px-2 py-2" : "gap-3 py-2 pl-2.5 pr-3"
+        } ${
+            isActive
+                ? "border-ink bg-surface-2 font-semibold text-ink"
+                : "border-transparent font-medium text-muted hover:bg-surface-2 hover:text-ink"
+        }`
 
-const NavItems = ({ items, onNavigate }) => (
+const NavItems = ({ items, onNavigate, collapsed = false }) => (
     <>
         {items.map((item) => {
             const Icon = item.icon
@@ -61,15 +67,29 @@ const NavItems = ({ items, onNavigate }) => (
                     to={item.to}
                     end={item.end}
                     onClick={onNavigate}
-                    className={linkClass}
+                    title={collapsed ? item.label : undefined}
+                    aria-label={collapsed ? item.label : undefined}
+                    className={linkClass(collapsed)}
                 >
                     <Icon className="h-4 w-4 shrink-0" />
-                    {item.label}
+                    {collapsed ? null : item.label}
                 </NavLink>
             )
         })}
     </>
 )
+
+// The rail remembers its own state, so the board looks the same next visit.
+const SIDEBAR_STORAGE_KEY = "clientflow.sidebar"
+
+const readCollapsed = () => {
+    try {
+        return localStorage.getItem(SIDEBAR_STORAGE_KEY) === "collapsed"
+    } catch {
+        // storage can be unavailable in private mode; start expanded
+        return false
+    }
+}
 
 const AppLayout = () => {
     const dispatch = useDispatch()
@@ -80,6 +100,7 @@ const AppLayout = () => {
     const [drawerOpen, setDrawerOpen] = useState(false)
     const [menuOpen, setMenuOpen] = useState(false)
     const [searchOpen, setSearchOpen] = useState(false)
+    const [collapsed, setCollapsed] = useState(readCollapsed)
 
     const menuRef = useRef(null)
     const drawerRef = useRef(null)
@@ -132,6 +153,18 @@ const AppLayout = () => {
         }
     }, [drawerOpen])
 
+    // Persist the rail's state.
+    useEffect(() => {
+        try {
+            localStorage.setItem(
+                SIDEBAR_STORAGE_KEY,
+                collapsed ? "collapsed" : "expanded",
+            )
+        } catch {
+            // storage can be unavailable in private mode; the rail still works
+        }
+    }, [collapsed])
+
     const onLogout = async () => {
         await dispatch(logoutUser())
         navigate("/login", { replace: true })
@@ -148,24 +181,40 @@ const AppLayout = () => {
                 Skip to content
             </a>
 
-            {/* Desktop sidebar */}
-            <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-line bg-surface px-3 py-5 lg:flex">
-                <Brand className="px-2" />
-
-                <div className="mt-6 px-1">
-                    <SearchTrigger
-                        onClick={() => setSearchOpen(true)}
-                        className="w-full"
-                    />
+            {/* Desktop sidebar: a labelled rail when expanded, icons only when collapsed */}
+            <aside
+                className={`sticky top-0 hidden h-screen shrink-0 flex-col border-r border-line bg-surface py-5 transition-[width] duration-200 lg:flex ${
+                    collapsed ? "w-[4.5rem] px-2" : "w-60 px-3"
+                }`}
+            >
+                <div
+                    className={`flex items-center gap-2 px-1 ${
+                        collapsed ? "flex-col" : "justify-between"
+                    }`}
+                >
+                    <Brand showName={!collapsed} />
+                    <IconButton
+                        label={
+                            collapsed
+                                ? "Expand navigation"
+                                : "Collapse navigation"
+                        }
+                        aria-expanded={!collapsed}
+                        onClick={() => setCollapsed((value) => !value)}
+                    >
+                        {collapsed ? <IconChevronRight /> : <IconChevronLeft />}
+                    </IconButton>
                 </div>
 
-                <nav className="mt-4 flex flex-1 flex-col gap-0.5">
-                    <NavItems items={nav} />
+                <nav className="mt-6 flex flex-1 flex-col gap-0.5">
+                    <NavItems items={nav} collapsed={collapsed} />
                 </nav>
 
-                <p className="px-2 font-mono text-[11px] uppercase tracking-[0.14em] text-faint">
-                    Signed in as {ROLE_LABELS[user?.role] || "user"}
-                </p>
+                {collapsed ? null : (
+                    <p className="px-2 font-mono text-[11px] uppercase tracking-[0.14em] text-faint">
+                        Signed in as {ROLE_LABELS[user?.role] || "user"}
+                    </p>
+                )}
             </aside>
 
             {/* Mobile drawer */}
@@ -226,17 +275,17 @@ const AppLayout = () => {
                     ) : null}
 
                     <div className="ml-auto flex items-center gap-1">
-                        {/* icon-only below sm, full field from sm to lg */}
+                        {/* The search field sits at every width, left of the mode toggle */}
+                        <div className="hidden sm:block">
+                            <SearchTrigger
+                                onClick={() => setSearchOpen(true)}
+                                className="w-40 md:w-52"
+                            />
+                        </div>
                         <div className="sm:hidden">
                             <SearchTrigger
                                 onClick={() => setSearchOpen(true)}
                                 compact
-                            />
-                        </div>
-                        <div className="hidden sm:block lg:hidden">
-                            <SearchTrigger
-                                onClick={() => setSearchOpen(true)}
-                                className="w-52"
                             />
                         </div>
 

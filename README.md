@@ -190,7 +190,17 @@ Frontend features that back the polish pass:
   action.
 - **Command palette** — ⌘K / Ctrl-K opens a role-scoped search over projects,
   tasks, clients and people. It only reads endpoints the signed-in user may
-  already call, so results cannot leak across roles.
+  already call, so results cannot leak across roles. The trigger sits in the
+  header, immediately left of the theme toggle, at every width.
+- **Collapsible rail** — the desktop sidebar folds down to icons only and
+  remembers the choice between visits. A collapsed item keeps its name as a
+  tooltip and as its accessible label, so nothing becomes a mystery icon.
+- **A ten-day task window** — task filters open on today -5 to today +5 days and
+  write that window into the URL, so the view can be shared. "Clear filters"
+  widens it back to everything rather than silently re-applying the default.
+- **Activity that opens** — every row in an activity feed opens the task behind
+  it, in the same detail panel the task board uses. Events where the overdue job
+  flagged a task are shown in red.
 - **Legal and consent** — Privacy, Terms and Cookies pages plus a simple
   cookie banner. The legal text is a genuine template, not legal advice; review
   it with counsel before production.

@@ -599,7 +599,8 @@ export const handleGetTaskActivity = async (req, res) => {
 
         const logs = await ActivityLog.find({ task: task._id })
             .populate("performedBy", "firstName lastName")
-            .sort({ createdAt: -1 })
+            // ids break time ties, so "assigned" still sorts above "created"
+            .sort({ createdAt: -1, _id: -1 })
             .limit(pageSize)
 
         return res.status(200).json({

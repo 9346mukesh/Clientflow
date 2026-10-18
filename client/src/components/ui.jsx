@@ -278,6 +278,17 @@ export const Modal = ({
     const titleId = useId()
     const descriptionId = useId()
 
+    // Callers pass a fresh closure on every render. Holding these in refs lets
+    // the effect below depend on `open` alone — otherwise a keystroke in a form
+    // would re-run it, refocus the first control and drop the caret mid-word.
+    const onCloseRef = useRef(onClose)
+    const dismissOnEscapeRef = useRef(dismissOnEscape)
+
+    useEffect(() => {
+        onCloseRef.current = onClose
+        dismissOnEscapeRef.current = dismissOnEscape
+    }, [onClose, dismissOnEscape])
+
     useEffect(() => {
         if (!open) return undefined
 
@@ -292,13 +303,19 @@ export const Modal = ({
                 ) || [],
             )
 
-        focusables()[0]?.focus()
+        // Land on the first real field when the dialog has one, so a form opens
+        // ready to type; otherwise fall back to the first control in the panel.
+        const firstField = panelRef.current?.querySelector(
+            'input:not([type="hidden"]), textarea, select',
+        )
+        const target = firstField || focusables()[0]
+        target?.focus()
 
         const onKeyDown = (event) => {
             if (event.key === "Escape") {
-                if (!dismissOnEscape) return
+                if (!dismissOnEscapeRef.current) return
                 event.stopPropagation()
-                onClose?.()
+                onCloseRef.current?.()
                 return
             }
 
@@ -328,7 +345,7 @@ export const Modal = ({
                 previouslyFocused.focus()
             }
         }
-    }, [open, onClose, dismissOnEscape])
+    }, [open])
 
     if (!open) return null
 

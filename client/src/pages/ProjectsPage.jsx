@@ -5,6 +5,7 @@ import { Link } from "react-router-dom"
 import {
     useCreateProjectMutation,
     useGetProjectsQuery,
+    useUpdateProjectMutation,
 } from "../features/projects/projectsApi.js"
 import { useGetClientsQuery } from "../features/clients/clientsApi.js"
 import { useGetUsersQuery } from "../features/users/usersApi.js"
@@ -39,6 +40,10 @@ const emptyForm = {
     status: "REQUIREMENT_ANALYSIS",
 }
 
+// Client and manager are the two facts people scan for, so they get weight.
+const META_LABEL =
+    "shrink-0 font-mono text-[10px] uppercase tracking-[0.14em] text-faint"
+
 const ProjectsPage = () => {
     useDocumentMeta(
         "Projects",
@@ -57,6 +62,7 @@ const ProjectsPage = () => {
     )
     const [createProject, { isLoading: creating, error }] =
         useCreateProjectMutation()
+    const [updateProject] = useUpdateProjectMutation()
 
     const [open, setOpen] = useState(false)
     const [form, setForm] = useState(emptyForm)
@@ -119,6 +125,20 @@ const ProjectsPage = () => {
         }
     }
 
+    // Move a project along its stages straight from the card.
+    const changeStatus = async (project, status) => {
+        if (status === project.status) return
+
+        try {
+            await updateProject({ id: project._id, status }).unwrap()
+            dispatch(pushToast({ message: "Project stage updated." }))
+        } catch (failure) {
+            dispatch(
+                pushToast({ tone: "error", message: errorMessage(failure) }),
+            )
+        }
+    }
+
     return (
         <div className="space-y-6">
             <PageHeader
@@ -145,39 +165,65 @@ const ProjectsPage = () => {
             ) : (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {projects.map((project) => (
-                        <Link
+                        <Card
                             key={project._id}
-                            to={`/projects/${project._id}`}
-                            className="block rounded-xl focus-visible:outline-none"
+                            className="relative flex h-full flex-col p-5 transition-colors hover:border-line-strong hover:bg-surface-2"
                         >
-                            <Card className="h-full p-5 transition-colors hover:border-line-strong hover:bg-surface-2">
-                                <div className="flex items-start justify-between gap-3">
-                                    <h2 className="font-display text-sm font-semibold tracking-tight text-ink">
+                            <div className="flex items-start justify-between gap-3">
+                                <h2 className="font-display text-sm font-semibold tracking-tight text-ink">
+                                    {/* the link stretches over the card, so the stage control below sits above it */}
+                                    <Link
+                                        to={`/projects/${project._id}`}
+                                        className="rounded underline-offset-4 after:absolute after:inset-0 after:content-[''] hover:underline focus-visible:underline focus-visible:outline-none"
+                                    >
                                         {project.projectTitle}
-                                    </h2>
-                                    <ProjectStatusBadge
-                                        status={project.status}
-                                    />
-                                </div>
-                                <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-muted">
-                                    {project.projectDescription}
-                                </p>
-                                <div className="mt-4 space-y-1 border-t border-line pt-3 text-xs text-muted">
-                                    <p>
-                                        <span className="text-faint">
-                                            Client
-                                        </span>{" "}
+                                    </Link>
+                                </h2>
+                                <ProjectStatusBadge
+                                    status={project.status}
+                                />
+                            </div>
+
+                            <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-muted">
+                                {project.projectDescription}
+                            </p>
+
+                            <dl className="mt-4 space-y-1.5 border-t border-line pt-3 text-xs">
+                                <div className="flex items-baseline justify-between gap-3">
+                                    <dt className={META_LABEL}>Client</dt>
+                                    <dd className="min-w-0 truncate font-medium text-ink">
                                         {project.client?.companyName || "—"}
-                                    </p>
-                                    <p>
-                                        <span className="text-faint">
-                                            Manager
-                                        </span>{" "}
-                                        {fullName(project.projectManager)}
-                                    </p>
+                                    </dd>
                                 </div>
-                            </Card>
-                        </Link>
+                                <div className="flex items-baseline justify-between gap-3">
+                                    <dt className={META_LABEL}>Manager</dt>
+                                    <dd className="min-w-0 truncate font-medium text-ink">
+                                        {fullName(project.projectManager)}
+                                    </dd>
+                                </div>
+                            </dl>
+
+                            <div className="relative z-10 mt-auto pt-4">
+                                <Field label="Stage">
+                                    <Select
+                                        value={project.status}
+                                        onChange={(event) =>
+                                            changeStatus(
+                                                project,
+                                                event.target.value,
+                                            )
+                                        }
+                                        aria-label={`Stage of ${project.projectTitle}`}
+                                    >
+                                        {PROJECT_STATUSES.map((status) => (
+                                            <option key={status} value={status}>
+                                                {PROJECT_STATUS_LABELS[status]}
+                                            </option>
+                                        ))}
+                                    </Select>
+                                </Field>
+                            </div>
+                        </Card>
                     ))}
                 </div>
             )}
