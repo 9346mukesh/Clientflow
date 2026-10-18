@@ -41,10 +41,12 @@ const PmDashboard = () => {
         count: tasks.filter((task) => task.priority === priority).length,
     }))
 
-    const upcoming = tasks
+    // everything due in the next seven days; the list below shows the first few
+    const dueThisWeek = tasks
         .filter((task) => task.status !== "DONE" && inThisWeek(task.dueDate))
         .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
-        .slice(0, 6)
+
+    const upcoming = dueThisWeek.slice(0, 6)
 
     return (
         <div className="space-y-6">
@@ -70,7 +72,7 @@ const PmDashboard = () => {
                 />
                 <StatCard
                     label="Due this week"
-                    value={loadingTasks ? "—" : upcoming.length}
+                    value={loadingTasks ? "—" : dueThisWeek.length}
                     tone="warning"
                 />
             </div>
@@ -109,7 +111,11 @@ const PmDashboard = () => {
                 <Card className="xl:col-span-2">
                     <CardHeader
                         title="Upcoming due dates"
-                        subtitle="Next seven days"
+                        subtitle={
+                            upcoming.length < dueThisWeek.length
+                                ? `Next seven days · first ${upcoming.length} of ${dueThisWeek.length}`
+                                : "Next seven days"
+                        }
                     />
                     {loadingTasks ? (
                         <div className="space-y-3 px-5 py-4">

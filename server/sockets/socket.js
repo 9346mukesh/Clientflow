@@ -137,5 +137,5 @@ export const getIO = () => {
     return io
 }
 
-// used by the admin dashboard over REST as a fallback to the live count
+// the current count, for anything that needs it outside the socket
 export const getPresenceCount = () => presenceCount()

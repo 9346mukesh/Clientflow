@@ -198,6 +198,12 @@ Frontend features that back the polish pass:
 - **A ten-day task window** — task filters open on today -5 to today +5 days and
   write that window into the URL, so the view can be shared. "Clear filters"
   widens it back to everything rather than silently re-applying the default.
+- **Three role dashboards** — an admin sees every project, a task count broken
+  down by status, the overdue count and a live "N online" fed by the socket; a
+  PM sees their projects, a breakdown by priority and everything due in the next
+  seven days; a developer sees their own tasks, priority first and due date
+  second. The admin and PM dashboards are unfiltered, so a headline figure there
+  counts the whole scope rather than whatever a list happens to show.
 - **Activity that opens** — every row in an activity feed opens the task behind
   it, in the same detail panel the task board uses. Events where the overdue job
   flagged a task are shown in red.
@@ -255,7 +261,8 @@ live, de-duplicated by `_id`.
 
 The server keeps a `userId -> socket count` map and broadcasts the number of
 distinct online users to the `admin` room, which is what the admin dashboard
-shows as "N online".
+shows as "N online". Because the map counts people rather than connections, a
+person with two tabs open counts once, and the number only ever reaches admins.
 
 ---
 
@@ -366,6 +373,17 @@ change is written to the database with a timestamp and the user behind it
 reaches only their own projects, and — exercised across every read endpoint —
 a task past its due date stays un-flagged until the scheduled job runs. It
 creates two projects and a few tasks and removes them again.
+
+`npm run test:dashboard` pins down the numbers the three dashboards are built
+from with `scripts/dashboardTest.js`. The figures are only right if their source
+is complete, ordered and scoped, so it asserts that `/api/tasks` answers with a
+role's whole scope rather than a page, that the order is priority first and due
+date second, that every task-list filter (status, priority, due range, project)
+returns exactly the rows its own query parameter asks for — and rejects a stale
+value instead of quietly ignoring it — and that the online count is live, sent
+to admins only, and refcounted so one person's second tab is not a second
+person. It also compares an unfiltered list to the same figure counted straight
+from the database. It only reads; nothing is written.
 
 ### Known trade-off
 
