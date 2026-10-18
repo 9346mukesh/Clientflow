@@ -12,7 +12,8 @@
     "dev": "nodemon index.js",
     "seed": "node seed.js",
     "test:authz": "node scripts/authzTest.js",
-    "test:authz:socket": "node scripts/socketAuthzTest.js"
+    "test:authz:socket": "node scripts/socketAuthzTest.js",
+    "test:project-task": "node scripts/projectTaskTest.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

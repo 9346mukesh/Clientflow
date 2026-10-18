@@ -348,6 +348,15 @@ holds their own task, a developer receives nothing about another developer's
 task, and a developer still receives their own task and status changes live.
 Two throwaway tasks are created and deleted.
 
+`npm run test:project-task` checks the project and task behaviour itself with
+`scripts/projectTaskTest.js`: an admin and a PM can create a project and attach
+it to a client, a task carries every field with the right defaults, a status
+change is written to the database with a timestamp and the user behind it
+(and survives the task moving on, so it is stored rather than derived), a PM
+reaches only their own projects, and — exercised across every read endpoint —
+a task past its due date stays un-flagged until the scheduled job runs. It
+creates two projects and a few tasks and removes them again.
+
 ### Known trade-off
 
 `authMiddleware` trusts the `role` in the signed access token, so a demotion or
