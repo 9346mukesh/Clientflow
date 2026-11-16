@@ -1,9 +1,10 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react"
 import { setAccessToken, loggedOut } from "../../features/auth/authSlice.js"
+import { API_BASE_URL } from "../../lib/env.js"
 
 // every request carries the in-memory access token and the refresh cookie
 const rawBaseQuery = fetchBaseQuery({
-    baseUrl: "/api",
+    baseUrl: API_BASE_URL,
     credentials: "include",
     prepareHeaders: (headers, { getState }) => {
         const token = getState().auth.accessToken

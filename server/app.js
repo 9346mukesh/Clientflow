@@ -3,7 +3,6 @@ import cors from "cors"
 import cookieParser from "cookie-parser"
 
 import requestTimer from "./middlewares/requestTimer.middleware.js"
-import connectDb from "./config/connectDb.js"
 import userRoutes from "./routes/user.routes.js"
 import authRoutes from "./routes/auth.routes.js"
 import clientRoutes from "./routes/client.routes.js"
@@ -24,7 +23,7 @@ app.use(requestTimer)
 app.use(cookieParser())
 
 //Database connection
-connectDb()
+
 
 app.get("/", (req, res) => {
     res.status(200).json({

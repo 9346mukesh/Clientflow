@@ -1,5 +1,5 @@
 import { io } from "socket.io-client"
-
+import { SOCKET_URL } from "../lib/env.js"
 // A single socket for the whole app, owned here rather than by a component so
 // that re-renders and React StrictMode's double-mount never tear down or
 // duplicate the connection.
@@ -21,7 +21,7 @@ export const connectSocket = (token) => {
     }
 
     // connect to this origin; the Vite dev proxy forwards the handshake
-    socket = io("/", {
+    socket = io(SOCKET_URL, {
         auth: { token },
         transports: ["websocket", "polling"],
     })

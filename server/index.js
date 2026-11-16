@@ -1,17 +1,26 @@
 import "dotenv/config"
 import http from "http"
 import app from "./app.js"
+import connectDb from "./config/connectDb.js"
 import { initSocket } from "./sockets/socket.js"
 import { startOverdueJob } from "./jobs/overdue.job.js"
 
 const PORT = process.env.PORT || 5000
 
-const server = http.createServer(app)
-initSocket(server)
+const startServer = async () => {
+    // Connect to MongoDB before accepting requests
+    await connectDb()
 
-// the scheduler only needs the http server running for its socket emits
-startOverdueJob()
+    const server = http.createServer(app)
 
-server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`)
-})
+    initSocket(server)
+
+    // Start background scheduler
+    startOverdueJob()
+
+    server.listen(PORT, "0.0.0.0", () => {
+        console.log(`Server running on port ${PORT}`)
+    })
+}
+
+startServer()

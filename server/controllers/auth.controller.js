@@ -6,6 +6,11 @@ import {
     generateRefreshToken,
 } from "../utils/generateTokens.js"
 
+import {
+    refreshCookieOptions,
+    setRefreshCookieOptions,
+} from "../config/cookies.js"
+
 export const handleRegister = async (req, res) => {
     const { firstName, lastName, email, password, gender, jobTitle, role } =
         req.body
@@ -102,12 +107,11 @@ export const handleLogin = async (req, res) => {
         const refreshToken = generateRefreshToken(user)
 
         // 6. Store refresh token in HttpOnly cookie
-        res.cookie("refreshToken", refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-        })
+        res.cookie(
+            "refreshToken",
+            refreshToken,
+            setRefreshCookieOptions,
+        )
 
         return res.status(200).json({
             success: true,
@@ -241,11 +245,10 @@ export const handleChangePassword = async (req, res) => {
 
 export const handleLogout = async (req, res) => {
     try {
-        res.clearCookie("refreshToken", {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
-        })
+        res.clearCookie(
+            "refreshToken",
+            refreshCookieOptions,
+        )
 
         return res.status(200).json({
             success: true,
